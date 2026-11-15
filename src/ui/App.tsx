@@ -45,7 +45,7 @@ import {
   waypoint,
 } from '../game/state';
 import { num, t } from '../i18n';
-import { CREDITS, TOOL_CREDITS } from '../game/credits';
+import { AI_USAGE, CREDITS, DATA_RESOURCES, TOOL_CREDITS } from '../game/credits';
 
 export interface Actions {
   start: () => void;
@@ -1853,7 +1853,7 @@ function Panel({ actions }: { actions: Actions }) {
         {p === 'missions' && <MissionSelect actions={actions} />}
         {p === 'crew' && <CrewPanel />}
         {p === 'colony' && <SettlementPanel />}
-        {p === 'credits' && <CreditsList />}
+        {p === 'credits' && <CreditsList detailed />}
       </div>
     </div>
   );
@@ -2178,7 +2178,7 @@ function MusicVideo({ actions }: { actions: Actions }) {
 }
 
 /** Everyone who made the game, then the tools and assets it is built with. */
-function CreditsList() {
+function CreditsList({ detailed = false }: { detailed?: boolean }) {
   return (
     <div class="credits-list">
       {CREDITS.map(([role, names]) => (
@@ -2196,6 +2196,35 @@ function CreditsList() {
           <b>{names.join(' · ')}</b>
         </div>
       ))}
+      {detailed ? (
+        <>
+          <h3>Data resources</h3>
+          {DATA_RESOURCES.map(([group, items]) => (
+            <div class="credit tool" key={group}>
+              <small>{group}</small>
+              {items.map(([label, href]) => (
+                <p class="credit-src" key={href + label}>
+                  {label}
+                  <br />
+                  <a href={href} target="_blank" rel="noopener noreferrer">{href}</a>
+                </p>
+              ))}
+            </div>
+          ))}
+          <h3>How we used AI</h3>
+          {AI_USAGE.map(([name, what, href]) => (
+            <div class="credit tool" key={name}>
+              <small>{name}</small>
+              <p class="credit-src">{what}</p>
+              {href ? (
+                <p class="credit-src">
+                  <a href={href} target="_blank" rel="noopener noreferrer">{href}</a>
+                </p>
+              ) : null}
+            </div>
+          ))}
+        </>
+      ) : null}
       <p class="credit-note">{t('credits.note')}</p>
     </div>
   );

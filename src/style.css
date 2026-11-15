@@ -238,6 +238,8 @@ kbd {
 .credit b { display: block; font-size: 17px; font-weight: 600; color: #eef4f8; }
 .credit.tool b { font-weight: 400; font-size: 15px; color: #d5e2ec; }
 .credits-list h3 { font-family: var(--title); letter-spacing: 0.08em; margin: 34px 0 16px; color: #eef4f8; }
+.credit-src { font-size: 13px; line-height: 1.5; color: #d5e2ec; margin: 4px auto 8px; max-width: 560px; overflow-wrap: anywhere; }
+.credit-src a { color: var(--cyan); }
 .credit-note { font-size: 13px; color: var(--dim); margin-top: 22px; }
 .mtv-credits { position: absolute; top: 0; bottom: 0; right: 0; width: min(30vw, 440px); overflow: hidden; pointer-events: none;
   background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.5) 45%);

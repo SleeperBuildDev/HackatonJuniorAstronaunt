@@ -18,3 +18,17 @@ NOAA Space Weather Prediction Center: https://www.swpc.noaa.gov/
 Zhang et al., Science Advances (2020): https://www.science.org/journal/sciadv
 University of Arizona CEAC: https://ceac.arizona.edu/
 Cornell CEA: https://cea.cals.cornell.edu/
+
+Images and models
+
+Poly Haven rocks and textures (CC0): https://polyhaven.com
+NASA Blue Marble (Earth image): https://visibleearth.nasa.gov/collection/1484/blue-marble
+
+How we used AI
+
+Kokoro TTS (open-source, ran offline): https://github.com/hexgrad/kokoro
+  Turned our own written scripts into the 168 English voice lines (Mission Control, crew, cutscene narration).
+Free Text to Speech Online: https://www.text-to-speech.online/en/
+  Turned our own written lines into extra spoken audio.
+Claude Code (Anthropic): https://claude.com/claude-code
+  AI coding assistant for the TypeScript code, automated tests, build/publishing setup and documents. The team decided what to build and tested every mission.
