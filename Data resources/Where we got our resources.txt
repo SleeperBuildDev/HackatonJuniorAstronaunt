@@ -1,0 +1,20 @@
+NASA
+
+Moon facts: https://science.nasa.gov/moon/
+Artemis (south pole): https://www.nasa.gov/artemis/
+Life Support Baseline Values and Assumptions Document: https://ntrs.nasa.gov (search the title)
+ISS ECLSS overview: https://www.nasa.gov/international-space-station/
+NASA Glenn photovoltaics and energy storage: https://www.nasa.gov/glenn-research-center/
+VSAT (Vertical Solar Array Technology): https://www.nasa.gov/space-technology-mission-directorate/
+LRO Diviner: https://www.diviner.ucla.edu/
+Lunar Sample Compendium: https://curator.jsc.nasa.gov/lunar/
+Veggie (Vegetable Production System): https://www.nasa.gov/ (search “Veggie”)
+NASA-STD-3001: https://standards.nasa.gov/
+ISS status reports: https://www.nasa.gov/international-space-station/
+
+Other science sources
+
+NOAA Space Weather Prediction Center: https://www.swpc.noaa.gov/
+Zhang et al., Science Advances (2020): https://www.science.org/journal/sciadv
+University of Arizona CEAC: https://ceac.arizona.edu/
+Cornell CEA: https://cea.cals.cornell.edu/

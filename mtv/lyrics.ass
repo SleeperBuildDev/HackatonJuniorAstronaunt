@@ -1,0 +1,90 @@
+﻿[Script Info]
+ScriptType: v4.00+
+PlayResX: 1920
+PlayResY: 1080
+WrapStyle: 2
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: EN,Segoe UI Light,44,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,3,0,1,0,0,2,60,60,84,1
+Style: MY,Myanmar Text,36,&H00C8D2D8,&H00C8D2D8,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,2,60,60,16,1
+Style: Kicker,Bahnschrift,30,&H00C8E6FF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,14,0,1,0,0,5,60,60,0,1
+Style: Title,Bahnschrift,120,&H00FFFFFF,&H00FFFFFF,&H00000000,&H64000000,1,0,0,0,100,100,24,0,1,0,6,5,60,60,0,1
+Style: Small,Segoe UI Light,34,&H00D8D8D8,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,4,0,1,0,0,5,60,60,0,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:01.20,0:00:06.40,Kicker,,0,0,0,,{\fad(900,700)\pos(960,420)}JUNIOR ASTRONAUT
+Dialogue: 0,0:00:02.00,0:00:06.50,Title,,0,0,0,,{\fad(1200,700)\pos(960,540)}THE LAST ORBIT
+Dialogue: 0,0:02:34.40,0:02:40.60,Title,,0,0,0,,{\fad(1000,800)\pos(960,480)}THE LAST ORBIT
+Dialogue: 0,0:02:35.20,0:02:40.60,Small,,0,0,0,,{\fad(1000,800)\pos(960,600)}Junior Astronaut: Lunar Survival Mission
+Dialogue: 0,0:02:35.80,0:02:40.60,Small,,0,0,0,,{\fad(1000,800)\pos(960,650)\fs26\c&H909090&}Rendered in the game engine
+Dialogue: 0,0:00:14.15,0:00:16.50,EN,,0,0,0,,{\fad(250,300)}Cold steel and the silence
+Dialogue: 0,0:00:14.15,0:00:16.50,MY,,0,0,0,,{\fad(250,300)}အေးစက်တဲ့ သံမဏိနဲ့ တိတ်ဆိတ်မှု
+Dialogue: 0,0:00:16.75,0:00:19.10,EN,,0,0,0,,{\fad(250,300)}Waiting for the dawn
+Dialogue: 0,0:00:16.75,0:00:19.10,MY,,0,0,0,,{\fad(250,300)}အရုဏ်ဦးကို စောင့်မျှော်ရင်း
+Dialogue: 0,0:00:19.35,0:00:21.70,EN,,0,0,0,,{\fad(250,300)}They move but they're hollow
+Dialogue: 0,0:00:19.35,0:00:21.70,MY,,0,0,0,,{\fad(250,300)}သူတို့ လှုပ်ရှားနေပေမဲ့ ဗလာသက်သက်
+Dialogue: 0,0:00:21.95,0:00:24.35,EN,,0,0,0,,{\fad(250,300)}All the others gone
+Dialogue: 0,0:00:21.95,0:00:24.35,MY,,0,0,0,,{\fad(250,300)}တခြားသူတွေ အားလုံး ပျောက်ကွယ်သွားပြီ
+Dialogue: 0,0:00:24.60,0:00:27.85,EN,,0,0,0,,{\fad(250,300)}Fixing up the broken pieces
+Dialogue: 0,0:00:24.60,0:00:27.85,MY,,0,0,0,,{\fad(250,300)}ကျိုးပဲ့နေတဲ့ အပိုင်းအစတွေကို ပြန်ပြင်ရင်း
+Dialogue: 0,0:00:28.10,0:00:31.35,EN,,0,0,0,,{\fad(250,300)}Learning how to breathe again
+Dialogue: 0,0:00:28.10,0:00:31.35,MY,,0,0,0,,{\fad(250,300)}အသက်ပြန်ရှူတတ်အောင် သင်ယူရင်း
+Dialogue: 0,0:00:31.60,0:00:34.85,EN,,0,0,0,,{\fad(250,300)}Wires screaming in the dark
+Dialogue: 0,0:00:31.60,0:00:34.85,MY,,0,0,0,,{\fad(250,300)}မှောင်မိုက်ထဲမှာ ဝါယာကြိုးတွေ အော်ဟစ်နေ
+Dialogue: 0,0:00:35.10,0:00:38.36,EN,,0,0,0,,{\fad(250,300)}This is where the ends begin
+Dialogue: 0,0:00:35.10,0:00:38.36,MY,,0,0,0,,{\fad(250,300)}ဒီနေရာက အဆုံးသတ်တွေ စတင်ရာပဲ
+Dialogue: 0,0:00:38.61,0:00:41.55,EN,,0,0,0,,{\fad(250,300)}Lost inside the black expanse
+Dialogue: 0,0:00:38.61,0:00:41.55,MY,,0,0,0,,{\fad(250,300)}မည်းနက်တဲ့ ကျယ်ပြင်ကြီးထဲ လမ်းပျောက်လို့
+Dialogue: 0,0:00:41.80,0:00:44.74,EN,,0,0,0,,{\fad(250,300)}Only me and ghosts remain
+Dialogue: 0,0:00:41.80,0:00:44.74,MY,,0,0,0,,{\fad(250,300)}ငါနဲ့ တစ္ဆေတွေပဲ ကျန်ရစ်ခဲ့
+Dialogue: 0,0:00:44.99,0:00:47.93,EN,,0,0,0,,{\fad(250,300)}Diving into deep forever
+Dialogue: 0,0:00:44.99,0:00:47.93,MY,,0,0,0,,{\fad(250,300)}ထာဝရ နက်ရှိုင်းရာထဲ ငုပ်ဆင်းရင်း
+Dialogue: 0,0:00:48.18,0:00:51.12,EN,,0,0,0,,{\fad(250,300)}Heavy silence fills the frame
+Dialogue: 0,0:00:48.18,0:00:51.12,MY,,0,0,0,,{\fad(250,300)}လေးလံတဲ့ တိတ်ဆိတ်မှုက မြင်ကွင်းကို ဖုံးလွှမ်း
+Dialogue: 0,0:00:51.37,0:00:54.31,EN,,0,0,0,,{\fad(250,300)}Lost inside the black expanse
+Dialogue: 0,0:00:51.37,0:00:54.31,MY,,0,0,0,,{\fad(250,300)}မည်းနက်တဲ့ ကျယ်ပြင်ကြီးထဲ လမ်းပျောက်လို့
+Dialogue: 0,0:00:54.56,0:00:57.50,EN,,0,0,0,,{\fad(250,300)}Only me and ghosts remain
+Dialogue: 0,0:00:54.56,0:00:57.50,MY,,0,0,0,,{\fad(250,300)}ငါနဲ့ တစ္ဆေတွေပဲ ကျန်ရစ်ခဲ့
+Dialogue: 0,0:00:57.75,0:01:00.70,EN,,0,0,0,,{\fad(250,300)}Diving into deep forever
+Dialogue: 0,0:00:57.75,0:01:00.70,MY,,0,0,0,,{\fad(250,300)}ထာဝရ နက်ရှိုင်းရာထဲ ငုပ်ဆင်းရင်း
+Dialogue: 0,0:01:00.95,0:01:03.90,EN,,0,0,0,,{\fad(250,300)}Heavy silence fills the frame
+Dialogue: 0,0:01:00.95,0:01:03.90,MY,,0,0,0,,{\fad(250,300)}လေးလံတဲ့ တိတ်ဆိတ်မှုက မြင်ကွင်းကို ဖုံးလွှမ်း
+Dialogue: 0,0:01:04.15,0:01:06.66,EN,,0,0,0,,{\fad(250,300)}Glow of the terminal screen
+Dialogue: 0,0:01:04.15,0:01:06.66,MY,,0,0,0,,{\fad(250,300)}တာမီနယ် မျက်နှာပြင်ရဲ့ အလင်းရောင်
+Dialogue: 0,0:01:06.91,0:01:09.42,EN,,0,0,0,,{\fad(250,300)}Flashing codes I have to know
+Dialogue: 0,0:01:06.91,0:01:09.42,MY,,0,0,0,,{\fad(250,300)}ငါသိရမယ့် ကုဒ်တွေ လက်ခနဲ လက်ခနဲ
+Dialogue: 0,0:01:09.67,0:01:12.18,EN,,0,0,0,,{\fad(250,300)}Cold machines and empty eyes
+Dialogue: 0,0:01:09.67,0:01:12.18,MY,,0,0,0,,{\fad(250,300)}အေးစက်တဲ့ စက်တွေ၊ ဗလာ မျက်လုံးတွေ
+Dialogue: 0,0:01:12.43,0:01:14.95,EN,,0,0,0,,{\fad(250,300)}Nowhere left for me to go
+Dialogue: 0,0:01:12.43,0:01:14.95,MY,,0,0,0,,{\fad(250,300)}ငါသွားစရာ ဘယ်နေရာမှ မကျန်တော့ဘူး
+Dialogue: 0,0:01:15.20,0:01:18.40,EN,,0,0,0,,{\fad(250,300)}Fixing up the broken pieces
+Dialogue: 0,0:01:15.20,0:01:18.40,MY,,0,0,0,,{\fad(250,300)}ကျိုးပဲ့နေတဲ့ အပိုင်းအစတွေကို ပြန်ပြင်ရင်း
+Dialogue: 0,0:01:18.65,0:01:21.85,EN,,0,0,0,,{\fad(250,300)}Learning how to breathe again
+Dialogue: 0,0:01:18.65,0:01:21.85,MY,,0,0,0,,{\fad(250,300)}အသက်ပြန်ရှူတတ်အောင် သင်ယူရင်း
+Dialogue: 0,0:01:22.10,0:01:25.30,EN,,0,0,0,,{\fad(250,300)}Wires screaming in the dark
+Dialogue: 0,0:01:22.10,0:01:25.30,MY,,0,0,0,,{\fad(250,300)}မှောင်မိုက်ထဲမှာ ဝါယာကြိုးတွေ အော်ဟစ်နေ
+Dialogue: 0,0:01:25.55,0:01:28.74,EN,,0,0,0,,{\fad(250,300)}This is where the ends begin
+Dialogue: 0,0:01:25.55,0:01:28.74,MY,,0,0,0,,{\fad(250,300)}ဒီနေရာက အဆုံးသတ်တွေ စတင်ရာပဲ
+Dialogue: 0,0:01:28.99,0:01:31.54,EN,,0,0,0,,{\fad(250,300)}Lost inside the black expanse
+Dialogue: 0,0:01:28.99,0:01:31.54,MY,,0,0,0,,{\fad(250,300)}မည်းနက်တဲ့ ကျယ်ပြင်ကြီးထဲ လမ်းပျောက်လို့
+Dialogue: 0,0:01:31.79,0:01:34.34,EN,,0,0,0,,{\fad(250,300)}Only me and ghosts remain
+Dialogue: 0,0:01:31.79,0:01:34.34,MY,,0,0,0,,{\fad(250,300)}ငါနဲ့ တစ္ဆေတွေပဲ ကျန်ရစ်ခဲ့
+Dialogue: 0,0:01:34.59,0:01:37.14,EN,,0,0,0,,{\fad(250,300)}Diving into deep forever
+Dialogue: 0,0:01:34.59,0:01:37.14,MY,,0,0,0,,{\fad(250,300)}ထာဝရ နက်ရှိုင်းရာထဲ ငုပ်ဆင်းရင်း
+Dialogue: 0,0:01:37.39,0:01:39.95,EN,,0,0,0,,{\fad(250,300)}Heavy silence fills the frame
+Dialogue: 0,0:01:37.39,0:01:39.95,MY,,0,0,0,,{\fad(250,300)}လေးလံတဲ့ တိတ်ဆိတ်မှုက မြင်ကွင်းကို ဖုံးလွှမ်း
+Dialogue: 0,0:01:40.20,0:01:42.75,EN,,0,0,0,,{\fad(250,300)}Lost inside the black expanse
+Dialogue: 0,0:01:40.20,0:01:42.75,MY,,0,0,0,,{\fad(250,300)}မည်းနက်တဲ့ ကျယ်ပြင်ကြီးထဲ လမ်းပျောက်လို့
+Dialogue: 0,0:01:43.00,0:01:45.55,EN,,0,0,0,,{\fad(250,300)}Only me and ghosts remain
+Dialogue: 0,0:01:43.00,0:01:45.55,MY,,0,0,0,,{\fad(250,300)}ငါနဲ့ တစ္ဆေတွေပဲ ကျန်ရစ်ခဲ့
+Dialogue: 0,0:01:45.80,0:01:48.35,EN,,0,0,0,,{\fad(250,300)}Diving into deep forever
+Dialogue: 0,0:01:45.80,0:01:48.35,MY,,0,0,0,,{\fad(250,300)}ထာဝရ နက်ရှိုင်းရာထဲ ငုပ်ဆင်းရင်း
+Dialogue: 0,0:01:48.60,0:01:51.15,EN,,0,0,0,,{\fad(250,300)}Heavy silence fills the frame
+Dialogue: 0,0:01:48.60,0:01:51.15,MY,,0,0,0,,{\fad(250,300)}လေးလံတဲ့ တိတ်ဆိတ်မှုက မြင်ကွင်းကို ဖုံးလွှမ်း
+Dialogue: 0,0:02:20.15,0:02:26.90,EN,,0,0,0,,{\fad(250,300)}Floating alone in the infinite black
+Dialogue: 0,0:02:20.15,0:02:26.90,MY,,0,0,0,,{\fad(250,300)}အဆုံးမဲ့ မှောင်မိုက်ထဲ တစ်ယောက်တည်း လွင့်မျောရင်း
+Dialogue: 0,0:02:27.15,0:02:33.90,EN,,0,0,0,,{\fad(250,300)}Nothing is coming to carry me back
+Dialogue: 0,0:02:27.15,0:02:33.90,MY,,0,0,0,,{\fad(250,300)}ငါ့ကို ပြန်ခေါ်ဆောင်ဖို့ ဘာမှ မလာတော့ဘူး
