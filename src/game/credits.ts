@@ -7,6 +7,7 @@ const ATH = 'Aung Thet Hlyan Oo';
 const PY = 'Paing Yamoun';
 
 export const CREDITS: [string, string[]][] = [
+  ['Project name', ['Lunar Recon']],
   ['Game Director', [SHT]],
   ['Gameplay Programmer', [MKK, KKA]],
   ['3D graphics', [MKK, SHT]],
