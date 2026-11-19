@@ -28,6 +28,8 @@ export class Player {
   grounded = false;
   sprinting = false;
   moving = false;
+  speedMul = 1;
+  stunned = false;
   private airTime = 0;
   private bobPhase = 0;
   private landDip = 0;
@@ -112,15 +114,19 @@ export class Player {
     const fwd = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
     const right = new THREE.Vector3(-fwd.z, 0, fwd.x);
     const wish = new THREE.Vector3();
-    if (active) {
+    if (active && !this.stunned) {
       if (this.input.isDown('KeyW')) wish.add(fwd);
       if (this.input.isDown('KeyS')) wish.sub(fwd);
       if (this.input.isDown('KeyD')) wish.add(right);
       if (this.input.isDown('KeyA')) wish.sub(right);
     }
-    if (wish.lengthSq() > 0) wish.normalize();
-    this.sprinting = active && wish.lengthSq() > 0 && (this.input.isDown('ShiftLeft') || this.input.isDown('ShiftRight'));
-    const target = wish.multiplyScalar(this.sprinting ? SPRINT : WALK);
+    if (this.stunned) {
+      wish.set(0, 0, 0);
+    } else if (wish.lengthSq() > 0) {
+      wish.normalize();
+    }
+    this.sprinting = !this.stunned && active && wish.lengthSq() > 0 && (this.input.isDown('ShiftLeft') || this.input.isDown('ShiftRight'));
+    const target = wish.multiplyScalar((this.sprinting ? SPRINT : WALK) * this.speedMul);
     const accel = this.grounded ? GROUND_ACCEL : AIR_ACCEL;
     const horiz = new THREE.Vector3(this.vel.x, 0, this.vel.z);
     const diff = target.sub(horiz);
@@ -129,7 +135,12 @@ export class Player {
     this.vel.x += diff.x;
     this.vel.z += diff.z;
 
-    if (this.grounded && active && this.input.pressed('Space')) {
+    if (this.stunned) {
+      this.vel.x *= 0.8;
+      this.vel.z *= 0.8;
+    }
+
+    if (!this.stunned && this.grounded && active && this.input.pressed('Space')) {
       this.vel.y = JUMP_SPEED;
       this.grounded = false;
       this.stats.jumps++;

@@ -21,6 +21,8 @@ export interface Shot {
   vo?: string;
   start?: () => void;
   update?: (t: number, dt: number) => void;
+  /** Optional teardown called when leaving the shot or skipping the cutscene. */
+  cleanup?: () => void;
 }
 
 const ease = (t: number) => t * t * (3 - 2 * t);
@@ -51,6 +53,24 @@ function orbit(center: THREE.Vector3, radius: number, height: number, a0: number
   };
 }
 
+let cachedDustTex: THREE.CanvasTexture | null = null;
+function dustGrainTexture(): THREE.CanvasTexture {
+  if (cachedDustTex) return cachedDustTex;
+  const c = document.createElement('canvas');
+  c.width = 32;
+  c.height = 32;
+  const g = c.getContext('2d')!;
+  const grad = g.createRadialGradient(16, 16, 1.5, 16, 16, 15);
+  grad.addColorStop(0, 'rgba(255,255,255,1)');
+  grad.addColorStop(0.45, 'rgba(235,230,220,0.85)');
+  grad.addColorStop(1, 'rgba(200,195,185,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 32, 32);
+  cachedDustTex = new THREE.CanvasTexture(c);
+  cachedDustTex.needsUpdate = true;
+  return cachedDustTex;
+}
+
 /**
  * Dust thrown up by the engine. On the Moon there is no air, so each grain flies on a
  * clean ballistic arc and falls back: no billowing cloud like on Earth.
@@ -69,7 +89,15 @@ class DustBurst {
     this.vel = new Float32Array(count * 3);
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(this.pos, 3));
-    const mat = new THREE.PointsMaterial({ color: 0xb8b2a6, size: 0.24, transparent: true, opacity: 0.95, depthWrite: false });
+    const mat = new THREE.PointsMaterial({
+      color: 0xb8b2a6,
+      map: dustGrainTexture(),
+      size: 0.3,
+      transparent: true,
+      alphaTest: 0.05,
+      opacity: 0.92,
+      depthWrite: false,
+    });
     this.points = new THREE.Points(geo, mat);
     this.points.frustumCulled = false;
     this.points.visible = false;
@@ -129,6 +157,7 @@ export class CutscenePlayer {
   }
 
   private next() {
+    this.shots?.[this.i]?.cleanup?.();
     this.i++;
     this.t = 0;
     const s = this.shots?.[this.i];
@@ -151,11 +180,12 @@ export class CutscenePlayer {
   skip() {
     if (!this.shots) return;
     stopVoices();
-    // Run every remaining shot's start/end state so props end up where they belong.
+    // Run every remaining shot's start/end state and cleanup so props end up where they belong.
     for (let j = Math.max(this.i, 0); j < this.shots.length; j++) {
       const s = this.shots[j];
       if (j > this.i) s.start?.();
       s.update?.(1, 0);
+      s.cleanup?.();
     }
     this.finish();
   }
@@ -555,5 +585,309 @@ export function buildCutscenes(scene: THREE.Scene, outpost: Outpost, start: { po
     },
   ];
 
-  return { intro, m1End, m2Intro, m2End, m3Intro, m3End, m4Intro, m4End, m5Intro, m5End, m6Intro, m6End, m7Intro, m7End, m8Intro, m8End, m9Intro, m9End };
+  // ---------- Lunar Siege Intro Cutscene ----------
+  const fissurePos = ground(B.x - 24, B.z + 22, 0);
+  const siegeDust = new DustBurst(900);
+  scene.add(siegeDust.points);
+
+  const siegeEruption = new THREE.Group();
+  siegeEruption.position.copy(fissurePos);
+  siegeEruption.visible = false;
+
+  // Dark jagged glowing seismic fissure pit on the regolith
+  const pitMesh = new THREE.Mesh(
+    new THREE.CircleGeometry(2.6, 11),
+    new THREE.MeshBasicMaterial({ color: 0x050308 }),
+  );
+  pitMesh.rotation.x = -Math.PI / 2;
+  pitMesh.position.y = 0.04;
+  pitMesh.scale.set(1.45, 0.72, 1);
+  siegeEruption.add(pitMesh);
+
+  const fissureMat = new THREE.MeshBasicMaterial({
+    color: 0xff2a55,
+    transparent: true,
+    opacity: 0.9,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    toneMapped: false,
+  });
+  const fissureCore = new THREE.Mesh(new THREE.RingGeometry(0.45, 2.35, 9), fissureMat);
+  fissureCore.rotation.x = -Math.PI / 2;
+  fissureCore.position.y = 0.07;
+  fissureCore.scale.set(1.5, 0.62, 1);
+  siegeEruption.add(fissureCore);
+
+  // Radiating glowing seismic fracture veins
+  const crackGeo = new THREE.PlaneGeometry(0.16, 3.2);
+  for (let i = 0; i < 6; i++) {
+    const crack = new THREE.Mesh(crackGeo, fissureMat);
+    crack.rotation.x = -Math.PI / 2;
+    crack.rotation.z = (i / 6) * Math.PI * 2 + (i % 2) * 0.25;
+    crack.position.set(Math.cos(crack.rotation.z) * 1.4, 0.06, Math.sin(crack.rotation.z) * 0.9);
+    siegeEruption.add(crack);
+  }
+
+  const rimMat = new THREE.MeshStandardMaterial({ color: 0x1c1a22, roughness: 0.92, metalness: 0.1 });
+  const rimGeo = new THREE.DodecahedronGeometry(0.55, 0);
+  for (let i = 0; i < 12; i++) {
+    const ang = (i / 12) * Math.PI * 2;
+    const shard = new THREE.Mesh(rimGeo, rimMat);
+    shard.position.set(Math.cos(ang) * 3.1, 0.18, Math.sin(ang) * 1.75);
+    shard.scale.set(1.1 + (i % 3) * 0.35, 0.5 + (i % 2) * 0.45, 0.9);
+    shard.rotation.set(i * 0.7, ang, i * 0.4);
+    shard.castShadow = false;
+    siegeEruption.add(shard);
+  }
+
+  const fissureLight = new THREE.PointLight(0xff3355, 10, 20, 1.8);
+  fissureLight.position.set(0, 1.4, 0);
+  fissureLight.castShadow = false;
+  siegeEruption.add(fissureLight);
+
+  // Detailed grotesque emerging alien silhouettes: clusters of uneven glowing eyes, snapping bone mandibles, articulated spider limbs
+  const alienCarapaceMat = new THREE.MeshStandardMaterial({ color: 0x160f1d, roughness: 0.48, metalness: 0.35 });
+  const alienBoneMat = new THREE.MeshStandardMaterial({ color: 0x9b8f7a, roughness: 0.55, metalness: 0.12 });
+  const eyeCrimsonMat = new THREE.MeshStandardMaterial({
+    color: 0xff2844,
+    emissive: 0xff1a36,
+    emissiveIntensity: 3.8,
+    roughness: 0.15,
+  });
+  const eyeAcidMat = new THREE.MeshStandardMaterial({
+    color: 0x7eff38,
+    emissive: 0x58ff1a,
+    emissiveIntensity: 3.6,
+    roughness: 0.15,
+  });
+  const eyeGeo = new THREE.SphereGeometry(0.065, 8, 6);
+  const femurGeo = new THREE.CylinderGeometry(0.075, 0.05, 1.05, 6);
+  const tibiaGeo = new THREE.ConeGeometry(0.06, 1.25, 5);
+  const mandibleGeo = new THREE.ConeGeometry(0.07, 0.58, 5);
+  const spineGeo = new THREE.ConeGeometry(0.055, 0.44, 5);
+
+  const silhouettes: {
+    group: THREE.Group;
+    leftJaw: THREE.Object3D;
+    rightJaw: THREE.Object3D;
+    legs: THREE.Object3D[];
+    maxY: number;
+    phase: number;
+  }[] = [];
+  const emergers = [
+    { x: -1.6, z: 0.35, h: 1.55, acid: false, yaw: 0.45, scale: 0.95 },
+    { x: 0.0, z: -0.15, h: 2.45, acid: false, yaw: 0.12, scale: 1.32 },
+    { x: 1.65, z: 0.45, h: 1.65, acid: true, yaw: -0.5, scale: 1.0 },
+    { x: -0.8, z: -0.95, h: 1.4, acid: true, yaw: 0.28, scale: 0.88 },
+    { x: 0.95, z: -0.85, h: 1.5, acid: false, yaw: -0.32, scale: 0.92 },
+  ];
+  const eyeOffsets: [number, number, number, number][] = [
+    [-0.14, 0.12, 0.36, 1.25],
+    [0.16, 0.1, 0.35, 1.15],
+    [-0.25, 0.02, 0.3, 0.78],
+    [0.24, 0.04, 0.31, 0.85],
+    [-0.05, 0.22, 0.33, 0.72],
+    [0.08, 0.2, 0.34, 0.68],
+  ];
+
+  for (let i = 0; i < emergers.length; i++) {
+    const e = emergers[i];
+    const g = new THREE.Group();
+
+    // Armored jagged cranium + dorsal bone spines
+    const head = new THREE.Mesh(new THREE.DodecahedronGeometry(0.4, 0), alienCarapaceMat);
+    head.scale.set(1.15, 0.88, 1.35);
+    g.add(head);
+
+    for (let s = 0; s < 4; s++) {
+      const sp = new THREE.Mesh(spineGeo, alienBoneMat);
+      sp.position.set((s % 2 === 0 ? -1 : 1) * 0.12, 0.32 - s * 0.03, -0.05 - s * 0.14);
+      sp.rotation.x = -0.45 - s * 0.12;
+      g.add(sp);
+    }
+
+    // Uneven cluster of 6 glowing eyes
+    const eMat = e.acid ? eyeAcidMat : eyeCrimsonMat;
+    for (const [ex, ey, ez, es] of eyeOffsets) {
+      const eye = new THREE.Mesh(eyeGeo, eMat);
+      eye.position.set(ex, ey, ez);
+      eye.scale.setScalar(es);
+      g.add(eye);
+    }
+
+    // Snapping bone mandibles (animated in update)
+    const leftJaw = new THREE.Group();
+    leftJaw.position.set(-0.18, -0.1, 0.36);
+    const lFang = new THREE.Mesh(mandibleGeo, alienBoneMat);
+    lFang.rotation.set(Math.PI * 0.58, 0, -0.35);
+    lFang.position.set(-0.08, -0.05, 0.2);
+    leftJaw.add(lFang);
+    g.add(leftJaw);
+
+    const rightJaw = new THREE.Group();
+    rightJaw.position.set(0.18, -0.1, 0.36);
+    const rFang = new THREE.Mesh(mandibleGeo, alienBoneMat);
+    rFang.rotation.set(Math.PI * 0.58, 0, 0.35);
+    rFang.position.set(0.08, -0.05, 0.2);
+    rightJaw.add(rFang);
+    g.add(rightJaw);
+
+    // 4 articulated clawed spider limbs reaching out of the fissure
+    const legs: THREE.Object3D[] = [];
+    for (const side of [-1, 1]) {
+      for (let pair = 0; pair < 2; pair++) {
+        const legPivot = new THREE.Group();
+        legPivot.position.set(side * 0.32, -0.08 - pair * 0.16, 0.08 - pair * 0.22);
+        const femur = new THREE.Mesh(femurGeo, alienCarapaceMat);
+        femur.position.set(side * 0.34, 0.36, 0.12);
+        femur.rotation.set(0.35, 0, -side * 0.72);
+        const tibia = new THREE.Mesh(tibiaGeo, alienBoneMat);
+        tibia.position.set(side * 0.76, 0.12, 0.34);
+        tibia.rotation.set(0.75, 0, -side * 2.55);
+        legPivot.add(femur, tibia);
+        g.add(legPivot);
+        legs.push(legPivot);
+      }
+    }
+
+    g.scale.setScalar(e.scale);
+    g.position.set(e.x, -1.5, e.z);
+    g.rotation.y = e.yaw;
+    g.traverse((o) => {
+      o.castShadow = false;
+      o.receiveShadow = false;
+    });
+    siegeEruption.add(g);
+    silhouettes.push({ group: g, leftJaw, rightJaw, legs, maxY: e.h, phase: i * 1.35 });
+  }
+  scene.add(siegeEruption);
+
+  let siegeRoared = false;
+  let siegeLocked = false;
+  const hideSiegeEruption = () => {
+    siegeEruption.visible = false;
+    siegeDust.hide();
+  };
+
+  const o2Pos = outpost.o2StationPos;
+  const airlockPos = outpost.airlockPos;
+
+  const siegeIntro: Shot[] = [
+    {
+      dur: 4.5,
+      caption: 'cs.caption.siege',
+      sub: 'cs.siege_1',
+      vo: 'cs_siege_1',
+      start: () => {
+        hideSiegeEruption();
+        sfx('klaxon');
+      },
+      update: (k) => {
+        shake.rumble(0.08 + k * 0.28);
+      },
+      cam: move(
+        v(B.x - 28, hab.y + 4.2, B.z + 24),
+        v(B.x + 14, hab.y + 6.5, B.z + 28),
+        v(B.x - 2, hab.y + 2.8, B.z),
+        v(B.x + 2, hab.y + 2.4, B.z - 2),
+      ),
+    },
+    {
+      dur: 5.0,
+      sub: 'cs.siege_2',
+      vo: 'cs_siege_2',
+      start: () => {
+        siegeRoared = false;
+        siegeEruption.visible = true;
+        siegeDust.reset(fissurePos);
+        sfx('burrow');
+        shake.add(0.55);
+      },
+      update: (k, dt) => {
+        if (k > 0.35 && !siegeRoared) {
+          siegeRoared = true;
+          sfx('boss_roar');
+          shake.add(0.48);
+        }
+        siegeDust.update(dt, k < 0.72 ? 1 - k * 0.45 : 0);
+        const rise = ease(Math.min(1, Math.max(0, (k - 0.08) / 0.6)));
+        for (const s of silhouettes) {
+          s.group.position.y = -1.4 + (s.maxY + 1.4) * rise + Math.sin(k * 24 + s.phase) * 0.08 * rise;
+          s.group.rotation.z = Math.sin(k * 18 + s.phase) * 0.14 * rise;
+          const snap = 0.18 + Math.abs(Math.sin(k * 26 + s.phase)) * 0.55;
+          s.leftJaw.rotation.y = -snap;
+          s.rightJaw.rotation.y = snap;
+          for (let li = 0; li < s.legs.length; li++) {
+            s.legs[li].rotation.x = Math.sin(k * 20 + s.phase + li * 1.4) * 0.28 * rise;
+          }
+        }
+        fissureLight.intensity = 7 + Math.sin(k * 38) * 3.8;
+        fissureMat.opacity = 0.65 + 0.3 * Math.sin(k * 28);
+        shake.rumble(0.24 * (1 - k * 0.5));
+        if (k >= 1) hideSiegeEruption();
+      },
+      cleanup: hideSiegeEruption,
+      cam: orbit(fissurePos, 11, 2.4, 0.4, 1.55, 1.2),
+    },
+    {
+      dur: 4.5,
+      sub: 'cs.siege_3',
+      vo: 'cs_siege_3',
+      start: () => {
+        sfx('powerup');
+        const rvPos = rv.position.clone();
+        siegeIntro[2].cam = move(
+          v(o2Pos.x + 7, o2Pos.y + 3.2, o2Pos.z + 8),
+          v(rvPos.x - 5.5, rvPos.y + 2.8, rvPos.z + 6.5),
+          v((o2Pos.x + airlockPos.x) * 0.5, hab.y + 1.8, (o2Pos.z + airlockPos.z) * 0.5),
+          v(rvPos.x, rvPos.y + 1.2, rvPos.z),
+        );
+      },
+      cam: () => {},
+    },
+    {
+      dur: 4.0,
+      sub: 'cs.siege_4',
+      vo: 'cs_siege_4',
+      start: () => {
+        siegeLocked = false;
+        sfx('reload');
+        const camEnd = start.pos.clone().add(v(0, 1.62, 0));
+        const fwd = v(-Math.sin(start.yaw), 0, -Math.cos(start.yaw));
+        const camStart = camEnd.clone().addScaledVector(fwd, -10).add(v(3.5, 2.6, 0));
+        const lookStart = camEnd.clone().addScaledVector(fwd, 12);
+        const lookEnd = camEnd.clone().addScaledVector(fwd, 20);
+        siegeIntro[3].cam = move(camStart, camEnd, lookStart, lookEnd);
+      },
+      update: (k) => {
+        if (k > 0.62 && !siegeLocked) {
+          siegeLocked = true;
+          sfx('gun_rail');
+        }
+      },
+      cam: () => {},
+    },
+  ];
+
+  return {
+    intro,
+    m1End,
+    m2Intro,
+    m2End,
+    m3Intro,
+    m3End,
+    m4Intro,
+    m4End,
+    m5Intro,
+    m5End,
+    m6Intro,
+    m6End,
+    m7Intro,
+    m7End,
+    m8Intro,
+    m8End,
+    m9Intro,
+    m9End,
+    siegeIntro,
+  };
 }

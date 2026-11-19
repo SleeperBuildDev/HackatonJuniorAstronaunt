@@ -35,7 +35,9 @@ import { resetCrew } from './game/crew';
 import { habitat, habitatDone, resetHabitat } from './game/habitat';
 import { capacityKWh, power, powerOnline, resetPower, setArrayHealth, sunYaw } from './game/power';
 import { MISSION_COUNT, missionDone, progress } from './game/save';
-import { airlockKpa, cardPopup, clock, fade, visorFx, habInside, habLights, knowledge, legend, comms, drive, fps, gameSpeed, heading, holdProgress, loadProgress, missionNumber, NORMAL_SPEED, panel, prompt, pushComm, screen, suit, terminal, unlock, warning, waypoint } from './game/state';
+import { airlockKpa, cardPopup, clock, fade, gameMode, visorFx, habInside, habLights, knowledge, legend, comms, drive, fps, gameSpeed, heading, holdProgress, loadProgress, missionNumber, NORMAL_SPEED, panel, prompt, pushComm, screen, suit, terminal, unlock, warning, waypoint } from './game/state';
+import { SiegeManager } from './game/siege';
+import { siege } from './game/siegeState';
 import { Input } from './player/input';
 import { addCollider, createPhysics } from './player/physics';
 import { Player } from './player/player';
@@ -84,6 +86,8 @@ async function boot() {
   input.allowUnlocked = QA;
 
   let player: Player | null = null;
+  let siegeMgr: SiegeManager | null = null;
+  const SIEGE_INTERACTABLES = new Set(['rover', 'airlock', 'o2', 'pw-terminal', 'pw-bus', 'hab-exit', 'hab-suit', 'hab-galley', 'hab-bunk']);
   /** Every playable mission, by number, with where it starts and its cutscenes. */
   interface MissionEntry {
     m: GameMission;
@@ -120,10 +124,25 @@ async function boot() {
 
   const actions: Actions = {
     start() {
+      gameMode.value = 'story';
+      siegeMgr?.stop();
       openMission(1);
     },
     play(n: number) {
+      gameMode.value = 'story';
+      siegeMgr?.stop();
       openMission(n);
+    },
+    startSiege() {
+      startAudio();
+      panel.value = null;
+      terminal.value = null;
+      gameMode.value = 'siege';
+      resetSiegeMode();
+      playCut(scenes?.siegeIntro, () => (screen.value = 'briefing'));
+    },
+    pickUpgrade(id: string) {
+      siegeMgr?.pickUpgrade(id);
     },
     skipCutscene() {
       cut.skip();
@@ -135,6 +154,13 @@ async function boot() {
       if (!ok) return;
       input.enabled = true;
       screen.value = 'playing';
+      if (gameMode.value === 'siege') {
+        if (!started) {
+          started = true;
+          siegeMgr?.start();
+        }
+        return;
+      }
       if (!started) {
         started = true;
         current().m.begin();
@@ -148,12 +174,21 @@ async function boot() {
       void actions.resume();
     },
     restart() {
+      if (gameMode.value === 'siege') {
+        resetSiegeMode();
+        void actions.resume();
+        return;
+      }
       resetMission();
       void actions.resume();
     },
     toMenu() {
       input.unlock();
       input.enabled = false;
+      if (gameMode.value === 'siege') {
+        siegeMgr?.stop();
+        gameMode.value = 'story';
+      }
       resetMission();
       screen.value = 'menu';
     },
@@ -208,7 +243,8 @@ async function boot() {
   document.addEventListener('mouseover', (e) => (e.target as HTMLElement).closest?.('button:not(:disabled)') && sfx('hover'));
 
   input.onLockChange = (locked) => {
-    if (!locked && screen.value === 'playing' && !terminal.value && !QA) screen.value = 'paused';
+    const upgradeOpen = gameMode.value === 'siege' && siege.value.phase === 'upgrade';
+    if (!locked && screen.value === 'playing' && !terminal.value && !upgradeOpen && !QA) screen.value = 'paused';
   };
 
   // ---------- world ----------
@@ -456,6 +492,14 @@ async function boot() {
   // Space, Enter or Esc skips a cutscene or the music video. The video ignores held keys and
   // its first second, so the key that skipped the ending cutscene doesn't skip it too.
   addEventListener('keydown', (e) => {
+    if (gameMode.value === 'siege' && siege.value.phase === 'upgrade' && screen.value === 'playing' && !e.repeat) {
+      const idx = e.code === 'Digit1' ? 0 : e.code === 'Digit2' ? 1 : e.code === 'Digit3' ? 2 : -1;
+      if (idx >= 0 && siege.value.upgradeChoices[idx]) {
+        e.preventDefault();
+        siegeMgr?.pickUpgrade(siege.value.upgradeChoices[idx]);
+        return;
+      }
+    }
     if (!['Space', 'Enter', 'Escape'].includes(e.code)) return;
     if (screen.value === 'cutscene') {
       e.preventDefault();
@@ -534,6 +578,54 @@ async function boot() {
     };
   }
 
+  function setupSiegeWorld() {
+    sunPath(0);
+    gameSpeed.value = NORMAL_SPEED;
+    lifeOnline();
+    const l = outpost.lifeSupport.lights;
+    l.o2.material = l.water.material = l.co2.material = statusMaterials.green;
+    powerOnline();
+    habitatDone();
+    greenhouseDone(18);
+    resetConstruction(1, ['hab', 'greenhouse']);
+    resetCrew(7);
+    radiationDone();
+    resetScience();
+    resetEmergency();
+    resetSettlement();
+    leaveRover(false);
+    rover.place(roverPark.pos, roverPark.yaw);
+    rover.battery = 100;
+    const h2 = outpost.hab2;
+    h2.shell.visible = true;
+    for (const b of h2.bands) b.visible = false;
+  }
+
+  function resetSiegeMode() {
+    moves.cancel();
+    leaveHabitatNow();
+    player!.setEnabled(true);
+    holdProgress.value = null;
+    for (const e of registry.values()) e.m.end?.();
+    fx.clear();
+    discoveries.cleanup();
+    legend.value = null;
+    started = false;
+    terminal.value = null;
+    setupSiegeWorld();
+    const spX = LAYOUT.base.x - 11.5;
+    const spZ = LAYOUT.base.z + 5.5;
+    const sp = new THREE.Vector3(spX, heightAt(spX, spZ), spZ);
+    player!.teleport(sp, Math.PI * 0.78);
+    player!.pitch = 0;
+    player!.stats = { distance: 0, jumps: 0 };
+    clock.value = { day: 1, minutes: 6 * 60 + 10 };
+    comms.value = [];
+    warning.value = null;
+    lowO2Warned = false;
+    siegeMgr?.reset();
+  }
+
   function resetMission() {
     // A walk-in or rover move cut short (mission ended, restarted): you can walk again.
     moves.cancel();
@@ -575,10 +667,11 @@ async function boot() {
     rover.applyCamera(seatCam);
     const side = seatCam.position.clone().addScaledVector(roverLeft(), 0.85).add(new THREE.Vector3(0, 0.14, 0));
     let sat = false;
+    const dur = gameMode.value === 'siege' ? 0.4 : 1.15;
     moves.play(
       [
         {
-          dur: 1.15,
+          dur,
           pose: path([from.pos, side, seatCam.position], from.quat, seatCam.quaternion, 0.2, 1),
           update: (_k, raw) => {
             if (raw > 0.82 && !sat) {
@@ -592,7 +685,7 @@ async function boot() {
       () => {
         rover.driving = true;
         drive.value = { driving: true, speed: 0, battery: rover.battery };
-        current().m.interact('rover');
+        if (gameMode.value === 'story') current().m.interact('rover');
       },
       false,
     );
@@ -621,7 +714,8 @@ async function boot() {
     const from = camPose();
     const side = from.pos.clone().addScaledVector(roverLeft(), 0.8).add(new THREE.Vector3(0, 0.12, 0));
     sfx('clunk');
-    moves.play([{ dur: 1.1, pose: path([from.pos, side, feet.clone().add(new THREE.Vector3(0, EYE_HEIGHT, 0))], from.quat, look(yaw, 0), 0, 0.8) }], camera, finish, false);
+    const dur = gameMode.value === 'siege' ? 0.4 : 1.1;
+    moves.play([{ dur, pose: path([from.pos, side, feet.clone().add(new THREE.Vector3(0, EYE_HEIGHT, 0))], from.quat, look(yaw, 0), 0, 0.8) }], camera, finish, false);
   }
 
   // ---------- HAB-1: walking in and out through the airlock ----------
@@ -638,17 +732,19 @@ async function boot() {
     prompt.value = null;
     const from = camPose();
     const stand = hp(-7.75, 2.42); // on the top step, facing the hatch
+    const fast = gameMode.value === 'siege';
+    const sd = (d: number) => (fast ? d * 0.18 : d);
     const steps: Step[] = [
-      { dur: walkTime(from.pos, stand), pose: path([from.pos, stand], from.quat, look(-Math.PI / 2, -0.06)) },
+      { dur: sd(walkTime(from.pos, stand)), pose: path([from.pos, stand], from.quat, look(-Math.PI / 2, -0.06)) },
       {
-        dur: 0.9,
+        dur: sd(0.9),
         start: () => {
           hatchTarget = 1;
           sfx('door');
         },
       },
       {
-        dur: 1.3,
+        dur: sd(1.3),
         start: () => {
           interior.setChamberAir(0);
           interior.setLightsOn(true);
@@ -656,18 +752,18 @@ async function boot() {
         pose: path([stand, hp(-7.05, 2.62), CHAMBER], look(-Math.PI / 2, -0.06), EAST),
       },
       // Look back and watch the hatch shut.
-      { dur: 0.6, pose: path([CHAMBER, CHAMBER], EAST, look(Math.PI / 2 - 0.01, -0.06)) },
+      { dur: sd(0.6), pose: path([CHAMBER, CHAMBER], EAST, look(Math.PI / 2 - 0.01, -0.06)) },
       {
-        dur: 0.8,
+        dur: sd(0.8),
         start: () => {
           hatchTarget = 0;
           sfx('door');
         },
       },
-      { dur: 0.6, pose: path([CHAMBER, CHAMBER], look(Math.PI / 2 - 0.01, -0.06), EAST) },
+      { dur: sd(0.6), pose: path([CHAMBER, CHAMBER], look(Math.PI / 2 - 0.01, -0.06), EAST) },
       // Fill the chamber with air: 0 -> 101 kPa, the lamp turns from red to green.
       {
-        dur: 2.4,
+        dur: sd(2.4),
         start: () => sfx('hiss'),
         update: (k) => {
           airlockKpa.value = Math.round(101 * k);
@@ -679,13 +775,13 @@ async function boot() {
         },
       },
       {
-        dur: 0.8,
+        dur: sd(0.8),
         start: () => {
           interior.setInnerDoor(true);
           sfx('door');
         },
       },
-      { dur: 1.4, pose: path([CHAMBER, hp(-4.55, 3.12), HAB_SPOT.clone().setY(HAB_SPOT.y + EYE_HEIGHT)], EAST, EAST) },
+      { dur: sd(1.4), pose: path([CHAMBER, hp(-4.55, 3.12), HAB_SPOT.clone().setY(HAB_SPOT.y + EYE_HEIGHT)], EAST, EAST) },
     ];
     moves.play(steps, camera, () => {
       habInside.value = true;
@@ -694,7 +790,7 @@ async function boot() {
       player!.setEnabled(true);
       player!.teleport(HAB_SPOT, -Math.PI / 2);
       player!.pitch = 0;
-      unlock('airlock');
+      if (gameMode.value === 'story') unlock('airlock');
     });
     moves.walking = true; // your body walks in under the camera
   }
@@ -705,19 +801,21 @@ async function boot() {
     const near = hp(-3.85, 1.7 + EYE_HEIGHT);
     const outFeet = new THREE.Vector3(H.x - 9.0, 0, H.z);
     outFeet.y = heightAt(outFeet.x, outFeet.z);
+    const fast = gameMode.value === 'siege';
+    const sd = (d: number) => (fast ? d * 0.2 : d);
     const steps: Step[] = [
-      { dur: walkTime(from.pos, near), pose: path([from.pos, near], from.quat, WEST) },
+      { dur: sd(walkTime(from.pos, near)), pose: path([from.pos, near], from.quat, WEST) },
       {
-        dur: 0.8,
+        dur: sd(0.8),
         start: () => {
           interior.setChamberAir(1);
           interior.setInnerDoor(true);
           sfx('door');
         },
       },
-      { dur: 1.4, pose: path([near, hp(-4.55, 3.12), CHAMBER], WEST, WEST) },
+      { dur: sd(1.4), pose: path([near, hp(-4.55, 3.12), CHAMBER], WEST, WEST) },
       {
-        dur: 0.8,
+        dur: sd(0.8),
         start: () => {
           interior.setInnerDoor(false);
           sfx('door');
@@ -725,7 +823,7 @@ async function boot() {
       },
       // Pump the air out: 101 -> 0 kPa, green to red.
       {
-        dur: 2.2,
+        dur: sd(2.2),
         start: () => sfx('hiss'),
         update: (k) => {
           airlockKpa.value = Math.round(101 * (1 - k));
@@ -737,14 +835,14 @@ async function boot() {
         },
       },
       {
-        dur: 0.9,
+        dur: sd(0.9),
         start: () => {
           hatchTarget = 1;
           habInside.value = false;
           sfx('door');
         },
       },
-      { dur: 1.7, pose: path([CHAMBER, hp(-7.05, 2.62), hp(-7.75, 2.42), outFeet.clone().setY(outFeet.y + EYE_HEIGHT)], WEST, look(Math.PI / 2, -0.04)) },
+      { dur: sd(1.7), pose: path([CHAMBER, hp(-7.05, 2.62), hp(-7.75, 2.42), outFeet.clone().setY(outFeet.y + EYE_HEIGHT)], WEST, look(Math.PI / 2, -0.04)) },
     ];
     moves.play(steps, camera, () => {
       habInside.value = false;
@@ -900,6 +998,32 @@ async function boot() {
     warningTimer = secs;
   };
 
+  siegeMgr = new SiegeManager({
+    scene,
+    camera,
+    player: player!,
+    rover,
+    outpost,
+    input,
+    flash,
+    onRequestUnlock: () => {
+      input.enabled = false;
+      input.unlock();
+    },
+    onRequestLock: () => {
+      input.enabled = true;
+      if (QA) return;
+      void input.lock().then((ok) => {
+        if (!ok && screen.value === 'playing') screen.value = 'paused';
+      });
+    },
+    onGameOver: () => {
+      input.enabled = false;
+      input.unlock();
+      screen.value = 'gameover';
+    },
+  });
+
   /** A secret find: the legendary cutscene, then the gold card screen. */
   function playDiscovery(id: string) {
     legend.value = id;
@@ -919,6 +1043,16 @@ async function boot() {
   };
 
   function labelFor(it: Interactable) {
+    if (gameMode.value === 'siege') {
+      if (it.id === 'rover') return 'sg.p.rover';
+      if (it.id === 'airlock') return 'p.hab.enter';
+      if (it.id === 'hab-exit') return 'p.hab.exit';
+      if (it.id === 'o2') return 'sg.p.o2';
+      if (it.id === 'pw-terminal' || it.id === 'pw-bus') return 'sg.p.power';
+      if (it.id === 'hab-suit') return 'sg.p.habSuit';
+      if (it.id === 'hab-galley' || it.id === 'hab-bunk') return 'sg.p.habMed';
+      return it.label();
+    }
     const secret = discoveries.idOf(it.id);
     if (secret) return knowledge.value.includes(secret) ? 'p.disc.again' : 'p.disc';
     const l = current().m.label(it.id);
@@ -930,6 +1064,16 @@ async function boot() {
   }
 
   function use(it: Interactable) {
+    if (gameMode.value === 'siege') {
+      if (it.id === 'rover') return enterRover();
+      if (it.id === 'airlock') return enterHabitat();
+      if (it.id === 'hab-exit') return exitHabitat();
+      if (it.id === 'o2') return siegeMgr?.rechargeStation('o2');
+      if (it.id === 'pw-terminal' || it.id === 'pw-bus') return siegeMgr?.rechargeStation('power');
+      if (it.id === 'hab-suit') return siegeMgr?.rechargeStation('hab-suit');
+      if (it.id === 'hab-galley' || it.id === 'hab-bunk') return siegeMgr?.rechargeStation('hab-med');
+      return;
+    }
     const secret = discoveries.idOf(it.id);
     if (secret) return playDiscovery(secret);
     if (it.id === 'rover') return enterRover();
@@ -999,9 +1143,21 @@ async function boot() {
 
   const ndc = new THREE.Vector3();
   function updateGuide(now: number) {
-    let target = screen.value === 'playing' && !terminal.value && player && !moves.active ? current().m.guide(ctx()) : null;
-    // Inside HAB-1 every job is outside (or in the shelter): point at the way out.
-    if (target && habInside.value) target = { pos: interior.at(-4.5, 1.3, 0), label: current().m.label('airlock') ? target.label : 'wp.hab.exit' };
+    const isSiege = gameMode.value === 'siege';
+    let target =
+      screen.value === 'playing' && !terminal.value && player && !moves.active
+        ? isSiege
+          ? (siegeMgr?.guideTarget() ?? null)
+          : current().m.guide(ctx())
+        : null;
+    // Inside HAB-1 every job is outside (or in the shelter): point at the way out (or suit port if recharging in Siege).
+    if (target && habInside.value) {
+      if (isSiege && (target.label === 'sg.wp.hab' || target.label === 'sg.wp.o2' || target.label === 'sg.wp.power')) {
+        target = { pos: interior.at(-3.3, 1.35, 1.4), label: 'sg.p.habSuit' };
+      } else {
+        target = { pos: interior.at(-4.5, 1.3, 0), label: !isSiege && current().m.label('airlock') ? target.label : 'wp.hab.exit' };
+      }
+    }
     if (!target || !player) {
       if (waypoint.value) waypoint.value = null;
       beam.visible = false;
@@ -1060,6 +1216,7 @@ async function boot() {
     if (screen.value === 'mtv') return; // the video covers the screen: leave the GPU to it
     const inMission = screen.value === 'playing' && !panel.value;
     const playing = inMission && !terminal.value;
+    const isSiege = gameMode.value === 'siege';
 
     if (screen.value === 'cutscene') cut.update(dt, camera);
     else if (player && moves.active) {
@@ -1068,103 +1225,127 @@ async function boot() {
       input.takeLook();
       prompt.value = null;
       focused = null;
-      if (playing) simulateSuit(dt);
-      if (inMission && started) {
+      if (playing && !isSiege) simulateSuit(dt);
+      if (inMission && started && !isSiege) {
         current().m.update(dt, ctx());
         advanceClock(dt);
       }
-      input.endFrame();
     } else if (player && rover.driving) {
       // Driving: the rover moves and steps the physics; E gets out. Paused or a panel: it waits.
       if (inMission) {
-        rover.update(dt, input, playing);
+        rover.update(dt, input, playing && !(isSiege && siege.value.phase === 'upgrade'));
         fx.roll(rover.obj.position, rover.yaw, rover.speed, dt);
       } else input.takeLook();
       rover.applyCamera(camera);
       if (playing) {
-        if (input.pressed('KeyE')) leaveRover();
-        if (input.pressed('KeyC') && missionNumber.value >= 4) {
-          panel.value = 'crew';
-          input.unlock();
+        if (!(isSiege && siegeMgr?.isGrabbed()) && input.pressed('KeyE')) leaveRover();
+        if (isSiege && input.pressed('KeyF')) {
+          suit.value = { ...suit.value, light: !suit.value.light };
+          sfx('lamp');
         }
-        if (input.pressed('KeyT') && missionNumber.value === 9) {
-          panel.value = 'colony';
-          input.unlock();
+        if (!isSiege) {
+          if (input.pressed('KeyC') && missionNumber.value >= 4) {
+            panel.value = 'crew';
+            input.unlock();
+          }
+          if (input.pressed('KeyT') && missionNumber.value === 9) {
+            panel.value = 'colony';
+            input.unlock();
+          }
+          if (input.pressed('KeyK')) {
+            panel.value = 'knowledge';
+            input.unlock();
+          }
+          simulateSuit(dt);
         }
-        if (input.pressed('KeyK')) {
-          panel.value = 'knowledge';
-          input.unlock();
-        }
-        simulateSuit(dt);
       }
       prompt.value = null;
       focused = null;
-      if (inMission && started) {
+      if (inMission && started && !isSiege) {
         current().m.update(dt, ctx());
         advanceClock(dt);
       }
-      input.endFrame();
       if (rover.driving) drive.value = { driving: true, speed: rover.speed, battery: rover.battery };
     } else if (player) {
-      player.update(dt, playing);
+      player.update(dt, playing && !(isSiege && siege.value.phase === 'upgrade'));
       if (playing) {
-        const m = current().m;
-        const holdSecs = m.holdSeconds ?? 2.5;
-        const holdId = focused && (m.canHold ? m.canHold(focused.id) : focused.id === m.holdId) ? focused.id : null;
-        if (focused && holdId) {
-          // Hold E to do a repair: keep looking at the part while holding the key.
-          input.pressed('KeyE');
-          const before = holdTime;
-          holdTime = input.isDown('KeyE') ? holdTime + dt : 0;
-          // A ratchet sound every 0.35 s while the wrench turns.
-          if (holdTime > 0 && Math.floor(holdTime / 0.35) !== Math.floor(before / 0.35)) sfx('ratchet');
-          holdProgress.value = holdTime > 0 ? Math.min(1, holdTime / holdSecs) : null;
-          if (holdTime >= holdSecs) {
-            holdTime = 0;
-            holdProgress.value = null;
-            m.holdComplete?.(holdId);
-            sfx('clunk');
-          }
-        } else {
+        if (isSiege) {
           holdTime = 0;
           holdProgress.value = null;
-          if (input.pressed('KeyE') && focused) use(focused);
+          if (!siegeMgr?.isGrabbed() && input.pressed('KeyE') && focused) use(focused);
+        } else {
+          const m = current().m;
+          const holdSecs = m.holdSeconds ?? 2.5;
+          const holdId = focused && (m.canHold ? m.canHold(focused.id) : focused.id === m.holdId) ? focused.id : null;
+          if (focused && holdId) {
+            // Hold E to do a repair: keep looking at the part while holding the key.
+            input.pressed('KeyE');
+            const before = holdTime;
+            holdTime = input.isDown('KeyE') ? holdTime + dt : 0;
+            // A ratchet sound every 0.35 s while the wrench turns.
+            if (holdTime > 0 && Math.floor(holdTime / 0.35) !== Math.floor(before / 0.35)) sfx('ratchet');
+            holdProgress.value = holdTime > 0 ? Math.min(1, holdTime / holdSecs) : null;
+            if (holdTime >= holdSecs) {
+              holdTime = 0;
+              holdProgress.value = null;
+              m.holdComplete?.(holdId);
+              sfx('clunk');
+            }
+          } else {
+            holdTime = 0;
+            holdProgress.value = null;
+            if (input.pressed('KeyE') && focused) use(focused);
+          }
         }
         if (input.pressed('KeyF')) {
           suit.value = { ...suit.value, light: !suit.value.light };
           sfx('lamp');
         }
-        if (input.pressed('KeyK')) {
-          panel.value = 'knowledge';
-          input.unlock();
-        }
-        if (input.pressed('KeyC') && missionNumber.value >= 4) {
-          panel.value = 'crew';
-          input.unlock();
-        }
-        if (input.pressed('KeyT') && missionNumber.value === 9) {
-          panel.value = 'colony';
-          input.unlock();
+        if (!isSiege) {
+          if (input.pressed('KeyK')) {
+            panel.value = 'knowledge';
+            input.unlock();
+          }
+          if (input.pressed('KeyC') && missionNumber.value >= 4) {
+            panel.value = 'crew';
+            input.unlock();
+          }
+          if (input.pressed('KeyT') && missionNumber.value === 9) {
+            panel.value = 'colony';
+            input.unlock();
+          }
         }
         // Focus the interactable under the crosshair.
-        ray.setFromCamera(new THREE.Vector2(0, 0), camera);
-        const hit = ray.intersectObjects(targets, false)[0];
-        focused = hit ? (byObject.get(hit.object) ?? null) : null;
-        // Ignore things not in use yet: before their mission, or hidden (raycasts still hit hidden meshes).
-        if (focused && ((focused.minMission ?? 0) > missionNumber.value || !shown(focused.object))) focused = null;
-        // The hull is in between: no using HAB-1's stations from outside, or the outside from in there.
-        if (focused && indoor.has(focused) !== habInside.value) focused = null;
+        if (isSiege && siegeMgr?.isGrabbed()) {
+          focused = null;
+        } else {
+          ray.setFromCamera(new THREE.Vector2(0, 0), camera);
+          const hit = ray.intersectObjects(targets, false)[0];
+          focused = hit ? (byObject.get(hit.object) ?? null) : null;
+          if (isSiege) {
+            if (focused && (!SIEGE_INTERACTABLES.has(focused.id) || !shown(focused.object))) focused = null;
+          } else {
+            // Ignore things not in use yet: before their mission, or hidden (raycasts still hit hidden meshes).
+            if (focused && ((focused.minMission ?? 0) > missionNumber.value || !shown(focused.object))) focused = null;
+          }
+          // The hull is in between: no using HAB-1's stations from outside, or the outside from in there.
+          if (focused && indoor.has(focused) !== habInside.value) focused = null;
+        }
         prompt.value = focused ? labelFor(focused) : null;
 
-        simulateSuit(dt);
+        if (!isSiege) simulateSuit(dt);
       } else prompt.value = null;
-      if (inMission && started) {
+      if (inMission && started && !isSiege) {
         // Missions keep running while a terminal is open (machines don't stop).
         current().m.update(dt, ctx());
         advanceClock(dt);
       }
-      input.endFrame();
     }
+
+    if (isSiege && siegeMgr && started) {
+      siegeMgr.update(dt, t / 1000, playing, moves.active);
+    }
+    if (screen.value !== 'cutscene') input.endFrame();
 
     lamp.intensity = suit.value.light ? 30 : 0;
     // Running machines hum through the ground and the suit when you stand close.
@@ -1197,7 +1378,7 @@ async function boot() {
     sky.update(camera);
     fx.update(dt);
     // Secret finds of this mission: glints and the scanner chirp.
-    discoveries.update(dt, missionNumber.value, player && screen.value === 'playing' && !rover.driving && !habInside.value ? player.feet : null, knowledge.value, suit.value.light, screen.value === 'cutscene');
+    if (!isSiege) discoveries.update(dt, missionNumber.value, player && screen.value === 'playing' && !rover.driving && !habInside.value ? player.feet : null, knowledge.value, suit.value.light, screen.value === 'cutscene');
     // The airlock's outer hatch swings to where the walk-in/out wants it; the interior animates.
     hatchOpen += THREE.MathUtils.clamp(hatchTarget - hatchOpen, -dt / 0.85, dt / 0.85);
     outpost.airlockHatch.rotation.y = ease(hatchOpen) * 1.75;
@@ -1454,7 +1635,7 @@ async function boot() {
   function syncRadiation() {
     const r = rad.value;
     const rig = outpost.radiation;
-    const n = missionNumber.value;
+    const n = gameMode.value === 'siege' ? 7 : missionNumber.value;
     for (const b of BERMS) {
       const h = r.berms[b];
       const parts = rig.berms[b];
@@ -1484,24 +1665,25 @@ async function boot() {
   function syncEmergency(dt: number) {
     const e = emergency.value;
     const rig = outpost.emergency;
-    const m8 = missionNumber.value === 8;
-    rig.fittings.visible = missionNumber.value >= 8;
+    const story = gameMode.value === 'story';
+    const m8 = story && missionNumber.value === 8;
+    rig.fittings.visible = story && missionNumber.value >= 8;
     const hit = m8 && (e.active === 'solar' || e.done.includes('solar'));
     // Mission 9 starts with the damage Mission 8 left; tower 3 is clean once its new blanket is on.
-    rig.towerDamage[0].visible = hit || missionNumber.value >= 9;
-    rig.towerDamage[1].visible = hit || (missionNumber.value >= 9 && (power.value.arrays[2].health ?? 1) < 1);
+    rig.towerDamage[0].visible = story && (hit || missionNumber.value >= 9);
+    rig.towerDamage[1].visible = story && (hit || (missionNumber.value >= 9 && (power.value.arrays[2].health ?? 1) < 1));
     // Tower 2's status light shows red until its shorted string is cut out.
-    if (e.active === 'solar' && (e.phase === 'alert' || e.phase === 'diagnose' || e.phase === 'repair')) outpost.arrays[1].light.material = statusMaterials.red;
+    if (story && e.active === 'solar' && (e.phase === 'alert' || e.phase === 'diagnose' || e.phase === 'repair')) outpost.arrays[1].light.material = statusMaterials.red;
     const patched = e.done.includes('leak') || (e.active === 'leak' && (e.phase === 'recover' || e.phase === 'report'));
-    rig.patches.forEach((p, i) => (p.visible = missionNumber.value >= 8 && patched && i === e.leak));
+    rig.patches.forEach((p, i) => (p.visible = story && missionNumber.value >= 8 && patched && i === e.leak));
     // Mission 9 facilities rise while they are built, and become solid once finished.
     const st = settlement.value;
     for (const [id, f] of Object.entries(outpost.settlement.facilities)) {
       const b = st.building.find((x) => x.id === id);
       const done = st.running.includes(id as never);
-      f!.group.visible = missionNumber.value === 9 && (done || !!b);
+      f!.group.visible = story && missionNumber.value === 9 && (done || !!b);
       f!.group.scale.y = done ? 1 : b ? Math.max(0.05, 1 - b.hours / b.total) : 1;
-      facilityColliders[id](done && missionNumber.value === 9 ? f!.collider : null);
+      facilityColliders[id](story && done && missionNumber.value === 9 ? f!.collider : null);
     }
     rig.pumpLights.a.material = e.pumpA ? statusMaterials.green : statusMaterials.red;
     rig.pumpLights.b.material = e.pumpB ? statusMaterials.green : statusMaterials.amber;
@@ -1570,6 +1752,12 @@ async function boot() {
         /** Back to the normal real-time loop. */
         realtime: () => renderer.setAnimationLoop(loop),
         start: () => actions.start(),
+        startSiege: (skipCut = true) => {
+          actions.startSiege();
+          if (skipCut) cut.skip();
+          return actions.resume();
+        },
+        siege: siegeMgr!.qaHelpers(),
         play: () => {
           cut.skip();
           return actions.resume();

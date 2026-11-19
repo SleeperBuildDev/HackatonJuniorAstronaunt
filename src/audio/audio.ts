@@ -327,7 +327,23 @@ export type Sfx =
   | 'klaxon'
   | 'tick'
   | 'hiss'
-  | 'door';
+  | 'door'
+  | 'gun_carbine'
+  | 'gun_shotgun'
+  | 'gun_rail'
+  | 'gun_plasma'
+  | 'reload'
+  | 'hit'
+  | 'crit'
+  | 'alien_die'
+  | 'burrow'
+  | 'alien_grab'
+  | 'shove'
+  | 'breakfree'
+  | 'boss_roar'
+  | 'wave_clear'
+  | 'hurt'
+  | 'plasma_boom';
 
 let lastHover = 0;
 
@@ -483,6 +499,111 @@ export function sfx(name: Sfx, strength = 1) {
     case 'powerdown':
       note({ type: 'sawtooth', freq: 320, freqEnd: 60, dur: 1.6, gain: 0.03 });
       note({ type: 'sine', freq: 640, freqEnd: 120, dur: 1.6, gain: 0.025 });
+      break;
+    case 'gun_carbine':
+      // Fast, sharp pulse carbine discharge: electromagnetic crack and energy pop
+      note({ type: 'sawtooth', freq: 720, freqEnd: 150, dur: 0.1, gain: 0.08 * strength });
+      note({ type: 'square', freq: 1100, freqEnd: 240, dur: 0.07, gain: 0.05 * strength });
+      burst({ type: 'highpass', freq: 2400, freqEnd: 800, dur: 0.08, gain: 0.06 * strength });
+      burst({ type: 'lowpass', freq: 400, dur: 0.07, gain: 0.05 * strength });
+      break;
+    case 'gun_shotgun':
+      // Heavy regolith scattergun blast: explosive spread, low-frequency punch
+      note({ type: 'triangle', freq: 220, freqEnd: 45, dur: 0.28, gain: 0.12 * strength });
+      burst({ type: 'lowpass', freq: 350, freqEnd: 90, dur: 0.26, gain: 0.11 * strength });
+      burst({ type: 'bandpass', freq: 1200, freqEnd: 300, q: 1.2, dur: 0.22, gain: 0.1 * strength });
+      burst({ type: 'highpass', freq: 3200, dur: 0.08, gain: 0.07 * strength });
+      break;
+    case 'gun_rail':
+      // Hypersonic arc railgun: capacitor discharge sizzle and piercing sonic crack
+      note({ type: 'sawtooth', freq: 1900, freqEnd: 120, dur: 0.42, gain: 0.11 * strength });
+      note({ type: 'sine', freq: 160, freqEnd: 40, dur: 0.55, gain: 0.13 * strength, attack: 0.02 });
+      burst({ type: 'highpass', freq: 5000, freqEnd: 1400, dur: 0.35, gain: 0.09 * strength });
+      burst({ type: 'bandpass', freq: 800, freqEnd: 150, q: 2.5, dur: 0.45, gain: 0.08 * strength, at: 0.03 });
+      break;
+    case 'gun_plasma':
+      // Cryo-plasma blaster: resonant energy charge and whistling sub-bass bloom
+      note({ type: 'sine', freq: 520, freqEnd: 95, dur: 0.24, gain: 0.1 * strength });
+      note({ type: 'triangle', freq: 260, freqEnd: 65, dur: 0.32, gain: 0.08 * strength });
+      burst({ type: 'bandpass', freq: 1600, freqEnd: 400, q: 3.5, dur: 0.22, gain: 0.07 * strength });
+      note({ type: 'square', freq: 840, freqEnd: 210, dur: 0.12, gain: 0.04 * strength });
+      break;
+    case 'reload':
+      // Tactical suit magazine swap: eject, snap battery in, bolt cycle
+      burst({ type: 'highpass', freq: 3200, dur: 0.07, gain: 0.05 * strength });
+      note({ type: 'triangle', freq: 440, freqEnd: 220, dur: 0.09, gain: 0.05 * strength, at: 0.04 });
+      burst({ type: 'bandpass', freq: 2200, q: 2, dur: 0.12, gain: 0.06 * strength, at: 0.22 });
+      note({ type: 'square', freq: 620, dur: 0.07, gain: 0.04 * strength, at: 0.26 });
+      note({ freq: 280, freqEnd: 120, dur: 0.14, gain: 0.08 * strength, at: 0.46 });
+      burst({ type: 'highpass', freq: 4000, dur: 0.09, gain: 0.07 * strength, at: 0.5 });
+      break;
+    case 'hit':
+      // Projectile regolith / carapace impact: crisp thwack
+      note({ type: 'triangle', freq: 280, freqEnd: 110, dur: 0.08, gain: 0.07 * strength });
+      burst({ type: 'bandpass', freq: 1400, q: 1.5, dur: 0.06, gain: 0.06 * strength });
+      break;
+    case 'crit':
+      // Rewarding headshot / critical strike ping + crunch
+      note({ type: 'sine', freq: 1760, dur: 0.12, gain: 0.08 * strength });
+      note({ type: 'sine', freq: 2640, dur: 0.15, gain: 0.07 * strength, at: 0.03 });
+      burst({ type: 'highpass', freq: 4500, dur: 0.07, gain: 0.07 * strength });
+      note({ type: 'triangle', freq: 380, freqEnd: 120, dur: 0.12, gain: 0.08 * strength });
+      break;
+    case 'alien_die':
+      // Alien demise: descending guttural shriek and bio-dissipation hiss
+      note({ type: 'sawtooth', freq: 580, freqEnd: 85, dur: 0.38, gain: 0.07 * strength, attack: 0.03 });
+      burst({ type: 'bandpass', freq: 2000, freqEnd: 450, q: 2.0, dur: 0.42, gain: 0.08 * strength });
+      burst({ type: 'lowpass', freq: 250, dur: 0.3, gain: 0.06 * strength, at: 0.08 });
+      break;
+    case 'burrow':
+      // Subterranean displacement: grinding lunar regolith vibration
+      burst({ type: 'lowpass', freq: 220, freqEnd: 80, dur: 0.75, gain: 0.1 * strength, attack: 0.15 });
+      burst({ type: 'bandpass', freq: 420, freqEnd: 180, q: 2.8, dur: 0.65, gain: 0.07 * strength, attack: 0.1 });
+      note({ type: 'sine', freq: 75, freqEnd: 38, dur: 0.8, gain: 0.09 * strength, attack: 0.2 });
+      break;
+    case 'alien_grab':
+      // Violent suit tackle & latch: sharp claws scraping helmet
+      burst({ type: 'lowpass', freq: 380, dur: 0.22, gain: 0.11 * strength });
+      note({ type: 'sawtooth', freq: 880, freqEnd: 320, dur: 0.35, gain: 0.09 * strength, attack: 0.02 });
+      burst({ type: 'bandpass', freq: 2800, q: 2, dur: 0.28, gain: 0.08 * strength });
+      break;
+    case 'shove':
+      // Kinetic melee shove / bash
+      note({ type: 'triangle', freq: 180, freqEnd: 55, dur: 0.18, gain: 0.11 * strength });
+      burst({ type: 'lowpass', freq: 500, dur: 0.16, gain: 0.1 * strength });
+      burst({ type: 'highpass', freq: 1800, dur: 0.09, gain: 0.05 * strength });
+      break;
+    case 'breakfree':
+      // Exosuit servo overdrive surge: tearing free from alien grip
+      note({ type: 'sawtooth', freq: 140, freqEnd: 520, dur: 0.26, gain: 0.09 * strength, attack: 0.04 });
+      burst({ type: 'highpass', freq: 3200, freqEnd: 1200, dur: 0.22, gain: 0.08 * strength });
+      burst({ type: 'lowpass', freq: 300, dur: 0.25, gain: 0.1 * strength, at: 0.05 });
+      break;
+    case 'boss_roar':
+      // Massive lunar leviathan roar: deep sub-rumble and resonant warcry
+      note({ type: 'sawtooth', freq: 110, freqEnd: 48, dur: 1.4, gain: 0.12 * strength, attack: 0.2 });
+      note({ type: 'triangle', freq: 58, freqEnd: 32, dur: 1.6, gain: 0.13 * strength, attack: 0.15 });
+      burst({ type: 'bandpass', freq: 480, freqEnd: 140, q: 3.2, dur: 1.5, gain: 0.11 * strength, attack: 0.25 });
+      burst({ type: 'lowpass', freq: 180, dur: 1.5, gain: 0.1 * strength, attack: 0.3 });
+      break;
+    case 'wave_clear':
+      // Harmonic victory fanfare: lunar defense wave secured
+      [440, 554.37, 659.25, 880, 1108.73].forEach((f, i) => note({ type: 'triangle', freq: f, dur: 0.6, gain: 0.06 * strength, at: i * 0.11 }));
+      note({ type: 'sine', freq: 220, freqEnd: 440, dur: 1.2, gain: 0.07 * strength, attack: 0.1 });
+      burst({ type: 'bandpass', freq: 2400, freqEnd: 4800, q: 1.5, dur: 0.8, gain: 0.03 * strength, at: 0.3 });
+      break;
+    case 'hurt':
+      // Suit integrity damage: warning chime + concussive hit
+      burst({ type: 'lowpass', freq: 420, freqEnd: 120, dur: 0.25, gain: 0.12 * strength });
+      note({ type: 'sawtooth', freq: 220, freqEnd: 80, dur: 0.2, gain: 0.1 * strength });
+      burst({ type: 'highpass', freq: 3600, dur: 0.1, gain: 0.07 * strength });
+      break;
+    case 'plasma_boom':
+      // Heavy cryo-plasma detonation: cold blastwave explosion
+      note({ type: 'sine', freq: 130, freqEnd: 35, dur: 0.65, gain: 0.13 * strength });
+      burst({ type: 'lowpass', freq: 450, freqEnd: 70, dur: 0.6, gain: 0.12 * strength, attack: 0.02 });
+      burst({ type: 'bandpass', freq: 1800, freqEnd: 300, q: 1.8, dur: 0.55, gain: 0.09 * strength });
+      burst({ type: 'highpass', freq: 4200, freqEnd: 900, dur: 0.45, gain: 0.06 * strength, at: 0.05 });
       break;
   }
 }

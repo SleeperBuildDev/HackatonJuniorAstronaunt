@@ -177,6 +177,52 @@ LINES = {
     'cs_d_dustglow': "A dust detector, watching the horizon at sunset. Some say Moon dust can float and glow. Nobody knows for sure.",
     'cs_d_retroreflector': "A mirror on the Moon. Laser light from Earth bounces off it and comes straight back home.",
     'cs_d_eclipse': "Earth is hiding the Sun. That red ring is every sunrise and sunset on Earth, all at once.",
+    # Lunar Siege - Player Character (snarky, rude, feisty astronaut)
+    'pl_start_1': "More ugly bugs on the radar? Great. Exactly how I wanted to spend my unpaid lunar overtime.",
+    'pl_start_2': "Come on out, you creepy crawlers! I have got a full mag with your names on it!",
+    'pl_start_3': "Another swarm? Don't you freaks have anything better to do on a Tuesday?",
+    'pl_kill_1': "Eat lunar dust, you slimy little freak!",
+    'pl_kill_2': "Stay down, idiot!",
+    'pl_kill_3': "How is that taste, ugly?",
+    'pl_kill_4': "One less cockroach in my crater!",
+    'pl_kill_5': "Scratch one ugly bug! Who is next?",
+    'pl_burrow_1': "Ugh, crawling out of the dirt like worms? Disgusting!",
+    'pl_burrow_2': "Surprise surprise, the dirt has teeth. Get back underground, dirtbag!",
+    'pl_flyer_1': "Great, now the bugs have wings! Stop buzzing in my face!",
+    'pl_flyer_2': "Pest control incoming! Pull up, mosquito breath!",
+    'pl_grab_1': "Get your nasty claws off my face, you disgusting freak!",
+    'pl_grab_2': "Hands off the suit, dumbass! Let go!",
+    'pl_grab_3': "Personal space, ugly! Get off me!",
+    'pl_escape_1': "Back off! Eat boot, loser!",
+    'pl_escape_2': "Get off me, you piece of space junk!",
+    'pl_low_o2': "Suit alarm! I am choking on lunar air here! Where is the tank?",
+    'pl_low_pwr': "Battery critical? Of course the cheap government battery is dying now!",
+    'pl_refill_1': "Ah, sweet sweet oxygen. Back in business, you creeps!",
+    'pl_refill_2': "Tanks full, shields humming. Ready for round two, losers!",
+    'pl_rover_in': "Lock and load, baby! Let's see how you bugs like two tons of lunar steel!",
+    'pl_roadkill_1': "Beep beep, idiot! Get out of the road!",
+    'pl_roadkill_2': "Speed bump! That is another bug on my windshield!",
+    'pl_boss_1': "What in the cosmos is that giant monstrosity?! Who fed the cockroach radioactive garbage?!",
+    'pl_boss_2': "Look at the size of this ugly brute! You are going down, Goliath!",
+    'pl_boss_kill_1': "Timber! The bigger they are, the harder they splat! Suck on that, you overgrown freak!",
+    'pl_boss_kill_2': "And stay dead, giant! Nobody messes with my moon base!",
+    'pl_reload': "Swapping mags! Hold your horses, bugs!",
+    'pl_upgrade': "Now we are talking! Look at this firepower, babies!",
+    'pl_hurt_1': "Ow! Suit integrity hit! That was expensive, you jerk!",
+    'pl_hurt_2': "Agh! That actually stung! You are gonna pay for that!",
+    'pl_clear': "Wave wiped! That all you got, crater creeps? I am just getting warmed up!",
+    # Lunar Siege - Mission Control & Commander Ortiz
+    'sg_mc_start': "Mission Control to Survivor. Multiple subterranean bio-signatures detected converging on the outpost. Defend the perimeter!",
+    'sg_mc_boss': "Commander Ortiz here! Massive seismic tremor detected! High-threat alpha predator on approach! Concentrate all fire on that beast!",
+    'sg_mc_o2': "Mission Control warning! Suit life support reserves are in the red! Get to the oxygen station immediately!",
+    'sg_mc_upgrade': "Mission Control: Outpost fabricator has authorized a tactical tech requisition. Select your battlefield upgrade.",
+    'sg_mc_rover': "Commander Ortiz to Survivor. Rover combat authorization is green! Mount up and clear those swarms!",
+    'sg_mc_death': "Mission Control: Outpost vitals flatlined. Life support lost. We are sending an emergency recovery team. Rest easy, astronaut.",
+    # Lunar Siege - Intro Cutscene Narration
+    'cs_siege_1': "Outpost Alpha, day thirty-one. The lunar south pole has gone dead quiet. But beneath the frost, something ancient is stirring.",
+    'cs_siege_2': "Seismic tremors across the crater floor. Deep fissures opening in the regolith. They are not rocks. They are waking up.",
+    'cs_siege_3': "Life support and the rover are still operational, but the perimeter fence has collapsed. There is nowhere left to run.",
+    'cs_siege_4': "One astronaut. Four weapons. Infinite waves of lunar horrors. Defend the outpost, or be buried in the dust.",
 }
 
 k = Kokoro(MODEL, VOICES)
@@ -188,10 +234,27 @@ for key, text in LINES.items():
         continue
     # Cutscene narration uses a different, calmer voice than Mission Control.
     narrator = key.startswith('cs_')
-    # Crew members each have their own voice; Mission Control is am_michael.
-    voice = {'cr_cmdr': 'bf_emma', 'cr_sci': 'am_adam', 'cr_med': 'af_sarah'}.get(key[:7], 'af_heart' if narrator else 'am_michael')
+    if key == 'cs_siege_3':
+        voice = 'am_michael'
+        speed = 1.0
+    elif key == 'cs_siege_4':
+        voice = 'am_fenrir'
+        speed = 1.06
+    elif key.startswith('pl_'):
+        voice = 'am_fenrir'
+        speed = 1.06
+    elif key in ('sg_mc_rover', 'sg_mc_boss'):
+        voice = 'bf_emma'
+        speed = 1.0
+    elif key.startswith('sg_mc_'):
+        voice = 'am_michael'
+        speed = 1.0
+    else:
+        # Crew members each have their own voice; Mission Control is am_michael.
+        voice = {'cr_cmdr': 'bf_emma', 'cr_sci': 'am_adam', 'cr_med': 'af_sarah'}.get(key[:7], 'af_heart' if narrator else 'am_michael')
+        speed = 0.92 if narrator else 0.95
     lang = 'en-gb' if voice.startswith('b') else 'en-us'
-    audio, sr = k.create(text, voice=voice, speed=0.92 if narrator else 0.95, lang=lang)
+    audio, sr = k.create(text, voice=voice, speed=speed, lang=lang)
     with tempfile.TemporaryDirectory() as tmp:
         wav = os.path.join(tmp, key + '.wav')
         sf.write(wav, audio, sr)

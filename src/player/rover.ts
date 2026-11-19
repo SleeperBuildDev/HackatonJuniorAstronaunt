@@ -31,6 +31,8 @@ export class Rover {
   battery = 100;
   lookYaw = 0;
   lookPitch = -0.08;
+  speedMul = 1;
+  freeLook = false;
   /** Called with 0..1 when the rover hits something hard. */
   onBump: (k: number) => void = () => {};
 
@@ -103,15 +105,19 @@ export class Rover {
   }
 
   update(dt: number, input: Input, active: boolean) {
+    const maxFwd = ROVER_MAX * this.speedMul;
+    const maxRev = REVERSE_MAX * this.speedMul;
+    const accel = ACCEL * this.speedMul;
+
     const fwdKey = active && input.isDown('KeyW');
     const backKey = active && input.isDown('KeyS');
     const brake = active && input.isDown('Space');
     // A flat battery stops the motors; a nearly flat one only allows a slow crawl home.
-    const cap = this.battery <= 0 ? 0 : this.battery < 10 ? 1.5 : ROVER_MAX;
+    const cap = this.battery <= 0 ? 0 : this.battery < 10 ? 1.5 * this.speedMul : maxFwd;
     if (this.speed > cap) this.speed = Math.max(cap, this.speed - BRAKE * dt);
     if (brake) this.speed -= Math.sign(this.speed) * Math.min(Math.abs(this.speed), BRAKE * dt);
-    else if (fwdKey) this.speed = Math.min(cap, this.speed + (this.speed < 0 ? BRAKE : ACCEL) * dt);
-    else if (backKey) this.speed = Math.max(-Math.min(REVERSE_MAX, cap), this.speed - (this.speed > 0 ? BRAKE : ACCEL * 0.6) * dt);
+    else if (fwdKey) this.speed = Math.min(cap, this.speed + (this.speed < 0 ? BRAKE : accel) * dt);
+    else if (backKey) this.speed = Math.max(-Math.min(maxRev, cap), this.speed - (this.speed > 0 ? BRAKE : accel * 0.6) * dt);
     else this.speed -= Math.sign(this.speed) * Math.min(Math.abs(this.speed), DRAG * dt);
     const steerTarget = active ? (input.isDown('KeyA') ? 1 : 0) - (input.isDown('KeyD') ? 1 : 0) : 0;
     this.steer += (steerTarget - this.steer) * Math.min(1, dt * 5);
@@ -122,8 +128,13 @@ export class Rover {
     const look = input.takeLook();
     const sens = 0.0022 * s.sensitivity;
     if (active) {
-      this.lookYaw = THREE.MathUtils.clamp(this.lookYaw - look.x * sens, -2.3, 2.3);
-      this.lookPitch = THREE.MathUtils.clamp(this.lookPitch - look.y * sens * (s.invertY ? -1 : 1), -1.1, 1.1);
+      if (this.freeLook) {
+        this.lookYaw -= look.x * sens;
+        this.lookPitch = THREE.MathUtils.clamp(this.lookPitch - look.y * sens * (s.invertY ? -1 : 1), -1.1, 1.25);
+      } else {
+        this.lookYaw = THREE.MathUtils.clamp(this.lookYaw - look.x * sens, -2.3, 2.3);
+        this.lookPitch = THREE.MathUtils.clamp(this.lookPitch - look.y * sens * (s.invertY ? -1 : 1), -1.1, 1.1);
+      }
     }
 
     const f = this.forward;
@@ -134,7 +145,7 @@ export class Rover {
     const asked = Math.hypot(want.x, want.z);
     const got = Math.hypot(m.x, m.z);
     if (asked > 0.004 && got < asked * 0.5) {
-      this.onBump(Math.min(1, Math.abs(this.speed) / ROVER_MAX));
+      this.onBump(Math.min(1, Math.abs(this.speed) / maxFwd));
       this.speed *= 0.2;
     }
     const o = this.obj.position;
@@ -156,7 +167,7 @@ export class Rover {
     this.body.setNextKinematicRotation({ x: q.x, y: q.y, z: q.z, w: q.w });
     this.world.step();
     // A full battery drives for about 25 minutes at top speed.
-    this.battery = Math.max(0, this.battery - (Math.abs(this.speed) / ROVER_MAX) * (100 / 1500) * dt);
+    this.battery = Math.max(0, this.battery - (Math.abs(this.speed) / maxFwd) * (100 / 1500) * dt);
   }
 
   /** First-person view from the driver's seat. */

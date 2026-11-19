@@ -27,6 +27,7 @@ import {
   habLights,
   comms,
   fps,
+  gameMode,
   gameSpeed,
   heading,
   holdProgress,
@@ -44,11 +45,17 @@ import {
   warning,
   waypoint,
 } from '../game/state';
+import { siege } from '../game/siegeState';
 import { num, t } from '../i18n';
 import { AI_USAGE, CREDITS, DATA_RESOURCES, TOOL_CREDITS } from '../game/credits';
+import { SiegeBriefing, SiegeGameOver, SiegeHud, SiegeUpgradeModal } from './SiegeUi';
 
 export interface Actions {
   start: () => void;
+  /** Starts Lunar Siege · Alien Swarm (Endless) mode. */
+  startSiege: () => void;
+  /** Picks a post-wave upgrade in Lunar Siege mode. */
+  pickUpgrade: (id: string) => void;
   /** Opens mission n (from Continue or Mission select). */
   play: (n: number) => void;
   resume: () => void;
@@ -176,50 +183,57 @@ function Hud() {
   const s = suit.value;
   const m = mission.value;
   const c = clock.value;
+  const isSiege = gameMode.value === 'siege';
+  const sg = siege.value;
+  const healthPct = isSiege ? (s.health / Math.max(1, sg.maxHealth)) * 100 : s.health;
   const hh = Math.floor(c.minutes / 60) % 24;
   const mm = Math.floor(c.minutes % 60);
   const firstOpen = m.steps.findIndex((x) => !x.done);
   const current = firstOpen >= 0 ? m.steps[firstOpen] : null;
   return (
-    <div class="hud">
+    <div class={`hud ${isSiege ? 'sg-mode' : ''}`}>
       <div class="visor-edge" />
       <Compass />
       <Waypoint />
-      <div class="panel objective">
-        <div class="panel-title">{t(m.title)}</div>
-        <ul>
-          {m.steps.map((st, i) => {
-            const state = st.done ? 'done' : i === firstOpen ? 'current' : 'todo';
-            return (
-              <li class={state}>
-                <span class="tick">{st.done ? '✓' : i === firstOpen ? '▸' : '○'}</span>
-                {t(st.text)}
-                {st.progress && !st.done ? <em> {st.progress}</em> : null}
-              </li>
-            );
-          })}
-        </ul>
-        {current ? (
-          <div class="todo">
-            <span>💡 {t('hud.todo')}</span>
-            <p>{t('h.' + current.text)}</p>
-          </div>
-        ) : null}
-      </div>
-      <div class="panel clock">
-        <span>{t('hud.day')}</span>
-        <b>{c.day}</b>
-        <span>
-          {String(hh).padStart(2, '0')}:{String(mm).padStart(2, '0')} UTC
-        </span>
-        {gameSpeed.value > NORMAL_SPEED ? (
-          <span class="ff">
-            ⏩ {t('hud.fast')} ×{num(Math.round(gameSpeed.value / NORMAL_SPEED))}
+      {!isSiege ? (
+        <div class="panel objective">
+          <div class="panel-title">{t(m.title)}</div>
+          <ul>
+            {m.steps.map((st, i) => {
+              const state = st.done ? 'done' : i === firstOpen ? 'current' : 'todo';
+              return (
+                <li class={state}>
+                  <span class="tick">{st.done ? '✓' : i === firstOpen ? '▸' : '○'}</span>
+                  {t(st.text)}
+                  {st.progress && !st.done ? <em> {st.progress}</em> : null}
+                </li>
+              );
+            })}
+          </ul>
+          {current ? (
+            <div class="todo">
+              <span>💡 {t('hud.todo')}</span>
+              <p>{t('h.' + current.text)}</p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+      {!isSiege ? (
+        <div class="panel clock">
+          <span>{t('hud.day')}</span>
+          <b>{c.day}</b>
+          <span>
+            {String(hh).padStart(2, '0')}:{String(mm).padStart(2, '0')} UTC
           </span>
-        ) : null}
-      </div>
-      {missionNumber.value >= 3 ? <BasePanel /> : null}
-      <div class="comms">
+          {gameSpeed.value > NORMAL_SPEED ? (
+            <span class="ff">
+              ⏩ {t('hud.fast')} ×{num(Math.round(gameSpeed.value / NORMAL_SPEED))}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+      {!isSiege && missionNumber.value >= 3 ? <BasePanel /> : null}
+      <div class={`comms ${isSiege ? 'sg-comms' : ''}`}>
         {comms.value.slice(-2).map((cm) => (
           <div class="comm" key={cm.id}>
             <span class="from">📡 {t(cm.from)}</span>
@@ -230,8 +244,9 @@ function Hud() {
       <div class="panel vitals">
         <div class="panel-title">{t('hud.suit')}</div>
         <Bar label="O₂" value={s.o2} unit="%" warnAt={35} critAt={15} />
+        {isSiege && sg.o2Leak > 0 ? <div class="sg-leak-tag">⚠ {t('sg.o2leak')}</div> : null}
         <Bar label={t('hud.power')} value={s.power} unit="%" warnAt={30} critAt={12} />
-        <Bar label={t('hud.health')} value={s.health} unit="%" warnAt={50} critAt={25} />
+        <Bar label={t('hud.health')} value={healthPct} unit="%" warnAt={50} critAt={25} />
         <div class="vital-mini">
           <span>
             {t('hud.suitTemp')} <b>{s.tempIn.toFixed(0)}°C</b>
@@ -245,7 +260,7 @@ function Hud() {
           {s.light ? <span class="lamp">{t('hud.lamp')}</span> : null}
         </div>
       </div>
-      <div class="crosshair" />
+      {!isSiege ? <div class="crosshair" /> : null}
       {prompt.value ? (
         <div class="prompt">
           <kbd>E</kbd> {t(prompt.value)}
@@ -257,7 +272,7 @@ function Hud() {
         </div>
       ) : null}
       {warning.value ? (
-        warning.value.startsWith('i.') ? (
+        warning.value.startsWith('i.') || warning.value.startsWith('sg.i.') ? (
           <div class="warning info">✓ {t(warning.value)}</div>
         ) : (
           <div class="warning">⚠ {t(warning.value)}</div>
@@ -273,10 +288,11 @@ function Hud() {
       ) : null}
       {habInside.value ? <HabBadge /> : null}
       {airlockKpa.value !== null ? <AirlockPanel kpa={airlockKpa.value} /> : null}
-      {missionNumber.value === 6 ? <StormBanner /> : null}
+      {!isSiege && missionNumber.value === 6 ? <StormBanner /> : null}
       {drive.value.driving ? <RoverDash /> : null}
-      {missionNumber.value === 8 ? <EmergencyBanner /> : null}
-      {detector.value !== null ? <LeakDetector db={detector.value} /> : null}
+      {!isSiege && missionNumber.value === 8 ? <EmergencyBanner /> : null}
+      {!isSiege && detector.value !== null ? <LeakDetector db={detector.value} /> : null}
+      {isSiege ? <SiegeHud /> : null}
       {fps.value ? <div class="fps">{fps.value} fps</div> : null}
     </div>
   );
@@ -419,6 +435,11 @@ function RoverDash() {
         <span>
           <kbd>E</kbd> {t('rd.exit')}
         </span>
+        {gameMode.value === 'siege' ? (
+          <span class="sg-rd-turret">
+            <kbd>LMB</kbd> {t('sg.rd.shoot')}
+          </span>
+        ) : null}
       </div>
     </div>
   );
@@ -1898,6 +1919,14 @@ function Menu({ actions }: { actions: Actions }) {
               {t('menu.start')}
             </button>
           )}
+          <button class="btn sg-menu-btn" onClick={actions.startSiege}>
+            <span>{t('menu.siege')}</span>
+            {siege.value.bestScore > 0 ? (
+              <small class="sg-menu-best">
+                {t('menu.siegeBest', { w: num(siege.value.bestWave), s: num(siege.value.bestScore) })}
+              </small>
+            ) : null}
+          </button>
           <button class="btn" onClick={() => (panel.value = 'controls')}>
             {t('menu.controls')}
           </button>
@@ -2360,11 +2389,13 @@ export function App({ actions }: { actions: Actions }) {
       {sc === 'loading' && <Loading />}
       {sc === 'cutscene' && <Cinema actions={actions} />}
       {sc === 'menu' && <Menu actions={actions} />}
-      {sc === 'briefing' && <Briefing actions={actions} />}
+      {sc === 'briefing' && (gameMode.value === 'siege' ? <SiegeBriefing onDeploy={actions.resume} /> : <Briefing actions={actions} />)}
       {sc === 'paused' && !panel.value && <Paused actions={actions} />}
       {sc === 'complete' && <Complete actions={actions} />}
+      {sc === 'gameover' && <SiegeGameOver onAgain={actions.restart} onMenu={actions.toMenu} />}
       {sc === 'discovery' && <DiscoveryReveal actions={actions} />}
       {sc === 'mtv' && <MusicVideo actions={actions} />}
+      {sc === 'playing' && gameMode.value === 'siege' && siege.value.phase === 'upgrade' && <SiegeUpgradeModal onPick={actions.pickUpgrade} />}
       {sc === 'playing' && terminal.value === 'life' && <Terminal actions={actions} />}
       {sc === 'playing' && terminal.value === 'power' && <PowerTerminal actions={actions} />}
       {sc === 'playing' && terminal.value === 'array' && <ArrayPanel actions={actions} />}

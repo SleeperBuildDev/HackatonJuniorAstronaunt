@@ -1,8 +1,10 @@
 import { signal } from '@preact/signals';
 
-export type Screen = 'loading' | 'menu' | 'cutscene' | 'briefing' | 'playing' | 'paused' | 'complete' | 'discovery' | 'mtv';
+export type Screen = 'loading' | 'menu' | 'cutscene' | 'briefing' | 'playing' | 'paused' | 'complete' | 'discovery' | 'mtv' | 'gameover';
+export type GameMode = 'story' | 'siege';
 
 export const screen = signal<Screen>('loading');
+export const gameMode = signal<GameMode>('story');
 export const loadProgress = signal(0);
 /** Which overlay panel is open on top of the game (pauses input). */
 export const panel = signal<null | 'settings' | 'controls' | 'knowledge' | 'missions' | 'crew' | 'colony' | 'credits'>(null);
