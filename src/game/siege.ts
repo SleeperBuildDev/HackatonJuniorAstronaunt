@@ -168,8 +168,8 @@ export class SiegeManager {
     this.weapons.setReloading(0);
 
     this.deps.player.stunned = false;
-    this.deps.player.speedMul = 1;
-    this.deps.rover.speedMul = 1;
+    this.deps.player.speedMul = 1.28;
+    this.deps.rover.speedMul = 1.35;
     this.deps.rover.freeLook = true;
 
     resetSiegeState();
@@ -416,8 +416,8 @@ export class SiegeManager {
     }
 
     const stats = computeStats(snap.upgrades);
-    player.speedMul = stats.moveSpeedMul;
-    rover.speedMul = stats.roverSpeedMul;
+    player.speedMul = 1.28 * stats.moveSpeedMul;
+    rover.speedMul = 1.35 * stats.roverSpeedMul;
     rover.freeLook = true;
 
     this.grabImmunity = Math.max(0, this.grabImmunity - dt);

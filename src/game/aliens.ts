@@ -2463,14 +2463,14 @@ export class AlienManager {
     switch (kind) {
       case 'stalker':
         maxHp = Math.round(54 * scale);
-        speed = 8.4 + Math.min(scale * 0.45, 3.2);
+        speed = 2.8 + Math.min(scale * 0.1, 0.65);
         radius = 0.92;
         damage = Math.round(12 * (0.85 + 0.15 * scale));
         grabTaps = 5;
         break;
       case 'burrower':
         maxHp = Math.round(86 * scale);
-        speed = 7.1 + Math.min(scale * 0.35, 2.6);
+        speed = 2.4 + Math.min(scale * 0.09, 0.55);
         radius = 1.08;
         damage = Math.round(16 * (0.85 + 0.15 * scale));
         grabTaps = 6;
@@ -2480,21 +2480,21 @@ export class AlienManager {
         break;
       case 'flyer':
         maxHp = Math.round(64 * scale);
-        speed = 9.5 + Math.min(scale * 0.35, 3.0);
+        speed = 3.2 + Math.min(scale * 0.09, 0.65);
         radius = 1.12;
         damage = Math.round(13 * (0.85 + 0.15 * scale));
         grabTaps = 5;
         break;
       case 'spitter':
         maxHp = Math.round(62 * scale);
-        speed = 7.8 + Math.min(scale * 0.4, 2.8);
+        speed = 2.6 + Math.min(scale * 0.1, 0.6);
         radius = 0.95;
         damage = Math.round(14 * (0.85 + 0.15 * scale));
         grabTaps = 5;
         break;
       case 'boss_broodmother':
         maxHp = Math.round(680 * scale * bossTierMul);
-        speed = 5.4 + Math.min((tier - 1) * 0.45, 2.0);
+        speed = 1.8 + Math.min((tier - 1) * 0.1, 0.45);
         radius = 2.3;
         damage = Math.round(26 * (1 + (tier - 1) * 0.25));
         grabTaps = 9;
@@ -2504,14 +2504,14 @@ export class AlienManager {
         break;
       case 'boss_leviathan':
         maxHp = Math.round(620 * scale * bossTierMul);
-        speed = 10.6 + Math.min((tier - 1) * 0.5, 2.6);
+        speed = 3.2 + Math.min((tier - 1) * 0.1, 0.6);
         radius = 2.4;
         damage = Math.round(24 * (1 + (tier - 1) * 0.25));
         grabTaps = 9;
         break;
       case 'boss_apex':
         maxHp = Math.round(590 * scale * bossTierMul);
-        speed = 10.2 + Math.min((tier - 1) * 0.6, 3.0);
+        speed = 3.2 + Math.min((tier - 1) * 0.12, 0.65);
         radius = 1.85;
         damage = Math.round(25 * (1 + (tier - 1) * 0.25));
         grabTaps = 10;
@@ -2989,9 +2989,8 @@ export class AlienManager {
           a.bodyGroup.position.y = 0;
           a.bodyGroup.rotation.x = 0;
           a.airborne = true;
-          const vy = 10.4;
-          const airTime = Math.max(1.2, (2 * vy) / 5.8);
-          const horizSpd = Math.min(22, Math.max(11, distToPlayer / (airTime * 0.72)));
+          const vy = 7.6;
+          const horizSpd = Math.min(4.4, effSpeed * 1.18);
           a.vel.set(gdx * horizSpd, vy, gdz * horizSpd);
           this.spawnBurst(a.pos.x, a.pos.y + 0.2, a.pos.z, 20, {
             r: 0.5,
@@ -3005,9 +3004,9 @@ export class AlienManager {
           });
           playSfx('boss_roar', 0.65);
         }
-      } else if (!a.airborne && a.attackCooldown <= 0 && distToPlayer > 9.5 && distToPlayer < 42 && !ctx.habInside) {
-        a.attackCooldown = 4.6 + Math.random() * 1.8;
-        a.slamWindup = 0.42;
+      } else if (!a.airborne && a.attackCooldown <= 0 && distToPlayer > 8.0 && distToPlayer < 24 && !ctx.habInside) {
+        a.attackCooldown = 5.2 + Math.random() * 1.8;
+        a.slamWindup = 0.48;
       }
     }
 
@@ -3018,10 +3017,10 @@ export class AlienManager {
           a.attackCooldown = 2.6 + Math.random() * 1.4;
           this.fireProjectile(a, ctx.playerEye, 26, a.damage * 0.75, 'acid', 0);
         } else {
-          a.attackCooldown = 2.4 + Math.random() * 1.3;
+          a.attackCooldown = 2.6 + Math.random() * 1.3;
           a.airborne = true;
-          const leapSpd = effSpeed * 1.55;
-          a.vel.set(gdx * leapSpd, 5.8 + Math.random() * 2.0, gdz * leapSpd);
+          const leapSpd = Math.min(4.2, effSpeed * 1.18);
+          a.vel.set(gdx * leapSpd, 5.2 + Math.random() * 1.4, gdz * leapSpd);
           this.spawnBurst(a.pos.x, a.pos.y + 0.15, a.pos.z, 8, {
             r: 0.45,
             g: 0.44,
@@ -3132,7 +3131,9 @@ export class AlienManager {
     }
     a.root.rotation.set(a.pitch, a.yaw, a.roll);
 
-    this.animateLimbs(a, dt, ctx.now, moveMul * (a.airborne ? 0.35 : 1.0), effSpeed / 7.5, false);
+    // Keep creepy spider-leg scuttle brisk & lively even at lower linear chase speeds!
+    const legCadence = Math.max(0.85, effSpeed / 2.7) * (a.slowTimer > 0 ? 0.55 : 1.0);
+    this.animateLimbs(a, dt, ctx.now, moveMul * (a.airborne ? 0.35 : 1.0), legCadence, false);
 
     // Rover Ramming Check
     if (ctx.inRover && Math.abs(ctx.roverSpeed) > 2.2 && a.ramCooldown <= 0) {
@@ -3195,7 +3196,7 @@ export class AlienManager {
     let speedMul = 1.0;
 
     if (ctx.habInside) {
-      a.orbitAngle += a.orbitDir * dt * 0.55;
+      a.orbitAngle += a.orbitDir * dt * 0.32;
       const r = a.isBoss ? 18 : 13.5;
       desiredX = ctx.habCenter.x + Math.cos(a.orbitAngle) * r;
       desiredZ = ctx.habCenter.z + Math.sin(a.orbitAngle) * r;
@@ -3204,9 +3205,9 @@ export class AlienManager {
       desiredX = aimPoint.x;
       desiredY = aimPoint.y + 0.15;
       desiredZ = aimPoint.z;
-      speedMul = 1.38;
+      speedMul = 1.14;
     } else {
-      a.orbitAngle += a.orbitDir * dt * (a.isBoss ? 0.36 : 0.62);
+      a.orbitAngle += a.orbitDir * dt * (a.isBoss ? 0.22 : 0.34);
       const orbitR = a.isBoss ? 28 : 17 + (a.seed % 9);
       desiredX = targetPos.x + Math.cos(a.orbitAngle) * orbitR;
       desiredZ = targetPos.z + Math.sin(a.orbitAngle) * orbitR;
